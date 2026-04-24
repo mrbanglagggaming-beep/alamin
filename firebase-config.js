@@ -1,49 +1,43 @@
 /**
- * AutoScrip — Firebase Configuration & Security Module (FIXED v2)
+ * AutoScrip — Firebase Configuration & Security Module (FIXED v3)
  * ================================================================
- * ✅ FIX 1: Real Firebase config (powerscript-pro-web)
- * ✅ FIX 2: AdminCache — super_admin | admin | moderator সব accept
- * ✅ FIX 3: isAdmin() — email/uid bypass for master admin
- * ✅ FIX 4: Offline persistence with error handling
- * ✅ FIX 5: DOM, Sanitizer, ToolModel, UserModel — defined here
+ * ✅ FIX: Real projectId and MASTER_UID that matches Firestore
  */
 
 'use strict';
 
-// ─── Firebase Config ─────────────────────────────────────────────────────────
+// ─── Firebase Config (সঠিক প্রকল্পের তথ্য) ──────────────────────────────
 const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyA5_HYl2R1Sa17xBeBhyxO4lGa9lAY5ut4",
-  authDomain:        "powerscript-pro-web.firebaseapp.com",
-  projectId:         "powerscript-pro-web",
-  storageBucket:     "powerscript-pro-web.firebasestorage.app",
-  messagingSenderId: "709315727810",
-  appId:             "1:709315727810:web:abeb73172635061343c65b"
+  apiKey:            "AIzaSyCUuUgbSHG71emJIPLpcVi1GEWidDrV7w4",
+  authDomain:        "alamin-18326.firebaseapp.com",
+  projectId:         "alamin-18326",
+  storageBucket:     "alamin-18326.firebasestorage.app",
+  messagingSenderId: "20078453184",
+  appId:             "1:20078453184:web:60f3bb407024c92e2b6825"
 };
 
 const MASTER_EMAIL = 'mrbanglagggaming@gmail.com';
-const MASTER_UID   = 'E97OGEv5ZJFbHaoojCnFe25GSeY1';
+const MASTER_UID   = '9doS49dpnZRzrOaOg25VH7bkDlf1'; // ← Firestore UID বসান
 
-// Accepted admin roles
+// অন্যান্য অ্যাডমিন রোল যা অ্যাক্সেস পাবে
 const ADMIN_ROLES = new Set(['super_admin', 'admin', 'moderator', 'content_manager']);
 
-// ─── Initialize Firebase ──────────────────────────────────────────────────────
+// ─── Initialize Firebase ──────────────────────────────────────
 let _app, _auth, _db;
 
 function initFirebase() {
   if (_app) return { app: _app, auth: _auth, db: _db };
   try {
-    _app  = firebase.apps.length
-          ? firebase.app()
-          : firebase.initializeApp(FIREBASE_CONFIG);
+    _app  = firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
     _auth = firebase.auth();
     _db   = firebase.firestore();
 
-    // Long polling for Vercel Edge / corporate proxies
+    // Long polling for Vercel / proxies
     try {
       _db.settings({ experimentalForceLongPolling: true, merge: true });
     } catch (_) {}
 
-    // Offline persistence
+    // Offline support
     _db.enablePersistence({ synchronizeTabs: true })
       .catch(err => {
         if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
@@ -63,7 +57,7 @@ function initFirebase() {
   }
 }
 
-// ─── Admin Cache (FIXED) ─────────────────────────────────────────────────────
+// ─── Admin Cache ─────────────────────────────────────────────
 const AdminCache = {
   _cache: new Map(),
   _TTL:   5 * 60 * 1000, // 5 minutes
@@ -71,7 +65,7 @@ const AdminCache = {
   async check(uid) {
     if (!uid) return false;
 
-    // Master admin bypass — সবসময় true
+    // Master admin bypass
     if (uid === MASTER_UID) return true;
     const user = _auth?.currentUser;
     if (user?.email === MASTER_EMAIL) return true;
@@ -86,23 +80,18 @@ const AdminCache = {
       let result = false;
       if (doc.exists) {
         const data = doc.data();
-        // ✅ FIX: 'super_admin' | 'admin' | 'moderator' | 'content_manager' সব accept
         result = ADMIN_ROLES.has(data?.role) && data?.active !== false;
       }
       this._cache.set(uid, { isAdmin: result, ts: Date.now() });
       return result;
     } catch (e) {
       console.warn('[AdminCache] check failed:', e.message);
-      // Fallback: email/uid check
       const u = _auth?.currentUser;
       return u?.uid === MASTER_UID || u?.email === MASTER_EMAIL;
     }
   },
 
-  invalidate(uid) {
-    if (uid) this._cache.delete(uid);
-  },
-
+  invalidate(uid) { if (uid) this._cache.delete(uid); },
   clear() { this._cache.clear(); }
 };
 
@@ -113,7 +102,7 @@ async function isAdmin() {
   return AdminCache.check(user.uid);
 }
 
-// ─── Sanitizer ────────────────────────────────────────────────────────────────
+// ─── Sanitizer ───────────────────────────────────────────────
 const Sanitizer = {
   html(dirty) {
     if (typeof dirty !== 'string') return '';
@@ -143,7 +132,7 @@ const Sanitizer = {
   escapeHtml(str) { return this.text(str); }
 };
 
-// ─── DOM Helpers ──────────────────────────────────────────────────────────────
+// ─── DOM Helpers ──────────────────────────────────────────────
 const DOM = {
   el(tag, attrs = {}, ...children) {
     const el = document.createElement(tag);
@@ -167,18 +156,16 @@ const DOM = {
   $$(sel, ctx = document) { return Array.from(ctx.querySelectorAll(sel)); }
 };
 
-// ─── Tool Model ───────────────────────────────────────────────────────────────
+// ─── Tool Model ───────────────────────────────────────────────
 const ToolModel = {
   fromDoc(doc) {
     const d  = doc.data ? doc.data() : doc;
     const id = doc.id || d.id || d._id || '';
     return {
-      id,
-      _id:         id,
+      id, _id: id,
       title:       d.title || d.name || '',
       description: d.description || '',
       category:    d.category || 'other',
-      // ✅ FIX: subCategory field normalized
       subCategory: d.subCategory || d.subcategory || d.subcat || '',
       tags:        Array.isArray(d.tags) ? d.tags : [],
       code:        d.code || '',
@@ -215,14 +202,13 @@ const ToolModel = {
   }
 };
 
-// ─── User Model ───────────────────────────────────────────────────────────────
+// ─── User Model ───────────────────────────────────────────────
 const UserModel = {
   fromDoc(doc) {
     const d  = doc.data ? doc.data() : doc;
     const id = doc.id || d.uid || d.id || '';
     return {
-      uid:          id,
-      id:           id,
+      uid: id, id,
       displayName:  d.displayName || d.name || 'ইউজার',
       email:        d.email || '',
       role:         d.role || 'user',
@@ -246,7 +232,7 @@ const UserModel = {
   }
 };
 
-// ─── Global Exports ───────────────────────────────────────────────────────────
+// ─── Global Exports ───────────────────────────────────────────
 window.initFirebase  = initFirebase;
 window.isAdmin       = isAdmin;
 window.AdminCache    = AdminCache;
