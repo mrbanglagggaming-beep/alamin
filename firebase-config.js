@@ -1,5 +1,5 @@
 /**
- * AutoScrip — Firebase Configuration & Security Module
+ * AutoScrip — Firebase Configuration & Security Module (CORRECT v3)
  */
 
 'use strict';
@@ -15,10 +15,8 @@ const FIREBASE_CONFIG = {
 };
 
 const MASTER_EMAIL = 'mrbanglagggaming@gmail.com';
-// 🔥 গুরুত্বপূর্ণ: এটি আপনার ফায়ারবেস কনসোলের ইউজার আইডি (Authentication → Users)
-const MASTER_UID   = '9doS49dpnZRzrOaOg25VH7bkDlf1';
+const MASTER_UID   = '9doS49dpnZRzrOaOg25VH7bkDlf1'; // আপনার Firebase UID
 
-// অ্যাডমিন রোল
 const ADMIN_ROLES = new Set(['super_admin', 'admin', 'moderator', 'content_manager']);
 
 let _app, _auth, _db;
@@ -96,4 +94,17 @@ async function isAdmin() {
   return AdminCache.check(user.uid);
 }
 
-// অন্যান্য ফাংশন (Sanitizer, DOM, ToolModel, UserModel) আগের মতোই থাকবে...
+// Rest of the functions (Sanitizer, DOM, ToolModel, UserModel) remain the same...
+// (আগের কোডের বাকি অংশ এখানে বসবে)
+
+window.initFirebase  = initFirebase;
+window.isAdmin       = isAdmin;
+window.AdminCache    = AdminCache;
+window.ADMIN_ROLES   = ADMIN_ROLES;
+window.MASTER_UID    = MASTER_UID;
+window.MASTER_EMAIL  = MASTER_EMAIL;
+window.Sanitizer     = Sanitizer;
+window.DOM           = DOM;
+window.ToolModel     = ToolModel;
+window.UserModel     = UserModel;
+window.escHtml       = str => Sanitizer.text(str);
