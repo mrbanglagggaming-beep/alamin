@@ -81,13 +81,17 @@
   var _mx=setTimeout(function(){},0);
   /* PATCHED: clearInterval loop removed */
   // 9. Global flags
-  window._fbQuotaUntil   = Date.now()+(5*60*1000);
+  // ❌ REMOVED: window._fbQuotaUntil pre-set was BLOCKING Firestore on every page load,
+  //    causing "Quota throttle active" even when there was no real quota issue.
+  //    Quota will now only be set if a real 429 error occurs (see fetchToolsFromAPI).
   window._migrationDone  = true;
   window._readTestKilled = true;
   window._blockDiagLoop  = true;
   window._fbQuotaBackoff = 0;
   window._originalFetch  = _ft;
-  console.log('[AutoScrip] User Kill switch v3 active ✓');
+  // Safety: ensure no stale quota throttle from prior code paths
+  try { delete window._fbQuotaUntil; } catch(_){}
+  console.log('[AutoScrip] User Kill switch v4 active ✓ (Firestore unblocked)');
 })();
 </script>
   <meta charset="UTF-8">
