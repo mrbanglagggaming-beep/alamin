@@ -1366,6 +1366,357 @@ body {
 /* ── fadeIn keyframe (if not present) ──────────────────────── */
 @keyframes fadeIn { from{opacity:0} to{opacity:1} }
 
+/* ════════════════════════════════════════════════════════════════
+   🖤 VERCEL MONOCHROME THEME — TOOL WINDOW ONLY
+   ─────────────────────────────────────────────────────────────
+   ইউজারের অনুরোধ অনুযায়ী টুল উইন্ডোর ভেতরের সব এলোমেলো রঙ
+   একদম এক রঙে (Vercel.com style: pure black + white + neutral
+   gray) ইউনিফাই করা হয়েছে। কোনো ফাংশন/HTML/JS পরিবর্তন হয়নি —
+   শুধু #toolWindow scope-এ CSS override।
+   Palette:
+     bg:        #000000
+     surface:   #0a0a0a
+     surface2:  #111111
+     border:    rgba(255,255,255,.10)
+     border-h:  rgba(255,255,255,.20)
+     text:      #ededed
+     text-dim:  #a1a1a1
+     accent:    #ffffff (single accent — white-on-black)
+════════════════════════════════════════════════════════════════ */
+#toolWindow {
+  background: rgba(0,0,0,.85) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+#toolWindow .tw-box,
+#toolWindow #twBox {
+  background: #0a0a0a !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
+  box-shadow: 0 30px 80px rgba(0,0,0,.85), 0 0 0 1px rgba(255,255,255,.04) inset !important;
+  color: #ededed !important;
+}
+
+/* ── Title bar ── */
+#toolWindow .tw-titlebar,
+#toolWindow .tw-hd {
+  background: #000000 !important;
+  border-bottom: 1px solid rgba(255,255,255,.08) !important;
+}
+#toolWindow .tw-title-text { color: #ededed !important; text-shadow: none !important; }
+#toolWindow .tw-cat-badge,
+#toolWindow #twCatBadge {
+  background: rgba(255,255,255,.06) !important;
+  color: #ededed !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  text-shadow: none !important;
+  font-weight: 600 !important;
+}
+
+/* ── Hero panels ── */
+#toolWindow .tw-left,
+#toolWindow .tw-right {
+  background: #0a0a0a !important;
+  border-color: rgba(255,255,255,.08) !important;
+}
+#toolWindow .tw-tool-title {
+  color: #ffffff !important;
+  text-shadow: none !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+}
+#toolWindow .tw-desc { color: #a1a1a1 !important; }
+#toolWindow .tw-stat-val {
+  color: #ffffff !important;
+  text-shadow: none !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+}
+#toolWindow .tw-stat-lbl { color: #888 !important; }
+
+/* ── Tags / Author / Avatar ── (force monochrome — kill category gradients) */
+#toolWindow .tw-tag,
+#toolWindow .tw-tag * {
+  background: rgba(255,255,255,.05) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  color: #ededed !important;
+  text-shadow: none !important;
+}
+#toolWindow .tw-author-name { color: #ededed !important; }
+#toolWindow .tw-author-date { color: #888 !important; }
+#toolWindow .tw-av,
+#toolWindow .yt-avatar,
+#toolWindow [class*="av-"] {
+  background: #1a1a1a !important;
+  background-image: none !important;
+  color: #ededed !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  box-shadow: none !important;
+}
+
+/* ── Right panel category chip (was using inline gradient) ── */
+#toolWindow .tw-right > div[style] {
+  background: rgba(255,255,255,.05) !important;
+  background-image: none !important;
+  color: #ededed !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
+  text-shadow: none !important;
+}
+#toolWindow .tw-right > div[style] * {
+  color: inherit !important;
+  text-shadow: none !important;
+}
+
+/* ── Code section ── */
+#toolWindow .tw-code-section,
+#toolWindow .tw-share-section {
+  background: #000000 !important;
+  border-color: rgba(255,255,255,.08) !important;
+}
+#toolWindow .tw-code-label {
+  color: #ededed !important;
+  text-shadow: none !important;
+}
+#toolWindow .tw-code-label i { color: #a1a1a1 !important; }
+
+/* ── Terminal blocks ── */
+#toolWindow .tw-terminal,
+#toolWindow .tw-step-terminal {
+  background: #000000 !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
+}
+#toolWindow .tw-term-head,
+#toolWindow .tw-step-term-head {
+  background: #0a0a0a !important;
+  border-bottom: 1px solid rgba(255,255,255,.08) !important;
+}
+#toolWindow .tw-term-body,
+#toolWindow .tw-step-term-body {
+  background: #000000 !important;
+  color: #ededed !important;
+}
+#toolWindow .tw-prompt { color: #888 !important; }
+#toolWindow .tw-cmd-comment { color: #888 !important; font-style: italic; }
+#toolWindow .tw-cmd-out { color: #ededed !important; }
+#toolWindow .tw-step-term-label { color: #888 !important; }
+
+/* Mac dots in terminal heads — keep neutral */
+#toolWindow .tw-term-head > div[style*="background:#ff5f57"],
+#toolWindow .tw-step-term-head div[style*="background:#ff5f57"] { background: #4a4a4a !important; }
+#toolWindow .tw-term-head > div[style*="background:#febc2e"],
+#toolWindow .tw-step-term-head div[style*="background:#febc2e"] { background: #6a6a6a !important; }
+#toolWindow .tw-term-head > div[style*="background:#28c840"],
+#toolWindow .tw-step-term-head div[style*="background:#28c840"] { background: #8a8a8a !important; }
+
+/* ── Step blocks ── */
+#toolWindow .tw-steps-header {
+  background: #0a0a0a !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  color: #a1a1a1 !important;
+}
+#toolWindow .tw-steps-header strong { color: #ffffff !important; }
+#toolWindow .tw-steps-header i { color: #a1a1a1 !important; }
+#toolWindow .tw-step-block {
+  background: #0a0a0a !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
+}
+#toolWindow .tw-step-block:hover { border-color: rgba(255,255,255,.20) !important; }
+#toolWindow .tw-step-header {
+  background: #111111 !important;
+  border-bottom: 1px solid rgba(255,255,255,.08) !important;
+}
+#toolWindow .tw-step-num {
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #000000 !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-weight: 700 !important;
+}
+#toolWindow .tw-step-title { color: #ededed !important; }
+#toolWindow .tw-step-desc  { color: #a1a1a1 !important; }
+#toolWindow .tw-step-badge {
+  background: rgba(255,255,255,.08) !important;
+  color: #ededed !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+}
+#toolWindow .tw-step-footer {
+  background: #0a0a0a !important;
+  border-top: 1px solid rgba(255,255,255,.08) !important;
+}
+#toolWindow .tw-step-hint-first,
+#toolWindow .tw-step-hint-mid,
+#toolWindow .tw-step-hint-last {
+  color: #888 !important;
+}
+#toolWindow .tw-step-hint-first i,
+#toolWindow .tw-step-hint-last i { color: #ededed !important; }
+
+/* ── Copy buttons (step + copy-all + raw) ── */
+#toolWindow .tw-step-copy-btn,
+#toolWindow .tw-copy-all-btn,
+#toolWindow [id^="twcopy_"] {
+  background: #ffffff !important;
+  background-image: none !important;
+  border: 1px solid #ffffff !important;
+  color: #000000 !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+}
+#toolWindow .tw-step-copy-btn:hover,
+#toolWindow .tw-copy-all-btn:hover,
+#toolWindow [id^="twcopy_"]:hover {
+  background: #ededed !important;
+  border-color: #ededed !important;
+  color: #000000 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 14px rgba(255,255,255,.10) !important;
+}
+#toolWindow .tw-step-copy-btn.copied,
+#toolWindow .tw-copy-all-btn.copied,
+#toolWindow [id^="twcopy_"].copied {
+  background: #1a1a1a !important;
+  border-color: rgba(255,255,255,.30) !important;
+  color: #ffffff !important;
+}
+
+/* ── YouTube tutorial link in right panel ── */
+#toolWindow .tw-yt-link {
+  background: #0a0a0a !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
+}
+#toolWindow .tw-yt-link:hover {
+  border-color: rgba(255,255,255,.25) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,.5) !important;
+}
+#toolWindow .tw-yt-thumb-wrap { background: #000 !important; }
+#toolWindow .tw-yt-play-overlay {
+  background: rgba(0,0,0,.55) !important;
+  color: #ffffff !important;
+}
+#toolWindow .tw-yt-link-label {
+  background: #000000 !important;
+  color: #ededed !important;
+  border-top: 1px solid rgba(255,255,255,.08) !important;
+}
+#toolWindow .tw-yt-link-label i { color: #a1a1a1 !important; }
+
+/* ── Share buttons (Facebook / X / WhatsApp / Telegram / Copy link) ── */
+#toolWindow #twShareBtns .btn,
+#toolWindow #twShareBtns a,
+#toolWindow #twShareBtns button {
+  background: #0a0a0a !important;
+  background-image: none !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  color: #ededed !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+  transition: background .15s, border-color .15s, color .15s !important;
+}
+#toolWindow #twShareBtns .btn:hover,
+#toolWindow #twShareBtns a:hover,
+#toolWindow #twShareBtns button:hover {
+  background: #1a1a1a !important;
+  border-color: rgba(255,255,255,.28) !important;
+  color: #ffffff !important;
+}
+#toolWindow #twShareBtns i { color: inherit !important; }
+
+/* ── Footer buttons (close / video / copy / share / .ps1 / open script) ── */
+#toolWindow .tw-footer,
+#toolWindow #twFooter {
+  background: #000000 !important;
+  border-top: 1px solid rgba(255,255,255,.08) !important;
+  display: flex !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+  padding: 14px 18px !important;
+  justify-content: flex-end !important;
+}
+#toolWindow #twFooter .btn,
+#toolWindow #twFooter a,
+#toolWindow #twFooter button {
+  background: #0a0a0a !important;
+  background-image: none !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  color: #ededed !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  transition: background .15s, border-color .15s, color .15s, transform .15s !important;
+}
+#toolWindow #twFooter .btn:hover,
+#toolWindow #twFooter a:hover,
+#toolWindow #twFooter button:hover {
+  background: #1a1a1a !important;
+  border-color: rgba(255,255,255,.28) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+}
+/* Primary action ("স্ক্রিপ্টে খুলুন") — single white accent, Vercel-style */
+#toolWindow #twFooter .btn-primary,
+#toolWindow #twFooter button.btn-primary {
+  background: #ffffff !important;
+  border: 1px solid #ffffff !important;
+  color: #000000 !important;
+}
+#toolWindow #twFooter .btn-primary:hover {
+  background: #ededed !important;
+  border-color: #ededed !important;
+  color: #000000 !important;
+  filter: none !important;
+}
+#toolWindow #twFooter .btn-success,
+#toolWindow #twFooter .btn-outline,
+#toolWindow #twFooter .btn-ghost {
+  background: #0a0a0a !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  color: #ededed !important;
+}
+#toolWindow #twFooter .btn-success:hover,
+#toolWindow #twFooter .btn-outline:hover,
+#toolWindow #twFooter .btn-ghost:hover {
+  background: #1a1a1a !important;
+  border-color: rgba(255,255,255,.28) !important;
+  color: #ffffff !important;
+}
+#toolWindow #twFooter i { color: inherit !important; }
+
+/* ── Scrollbar inside tool window — neutral ── */
+#toolWindow .tw-box::-webkit-scrollbar,
+#toolWindow .tw-term-body::-webkit-scrollbar,
+#toolWindow .tw-step-term-body::-webkit-scrollbar { width: 8px; height: 8px; }
+#toolWindow .tw-box::-webkit-scrollbar-track,
+#toolWindow .tw-term-body::-webkit-scrollbar-track,
+#toolWindow .tw-step-term-body::-webkit-scrollbar-track { background: #000; }
+#toolWindow .tw-box::-webkit-scrollbar-thumb,
+#toolWindow .tw-term-body::-webkit-scrollbar-thumb,
+#toolWindow .tw-step-term-body::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.15);
+  border-radius: 4px;
+}
+#toolWindow .tw-box::-webkit-scrollbar-thumb:hover,
+#toolWindow .tw-term-body::-webkit-scrollbar-thumb:hover,
+#toolWindow .tw-step-term-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,.30);
+}
+
+/* ── Top-level fonts unification (subtle) ── */
+#toolWindow,
+#toolWindow * {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+/* Kill any leftover gradient text inside tool window */
+#toolWindow [style*="gradient"]:not(.tw-step-num) {
+  background-image: none !important;
+}
+/* ════════════════════════════════════════════════════════════════ */
+
 </style>
   <!-- ✅ JSON-LD SEO Structured Data -->
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"AutoScrip","description":"বাংলাদেশের প্রথম নিরাপদ PowerShell স্ক্রিপ্ট প্ল্যাটফর্ম","url":"https://autoscrip.vercel.app","applicationCategory":"DeveloperApplication","operatingSystem":"Windows","inLanguage":"bn","offers":{"@type":"Offer","price":"0","priceCurrency":"BDT"}}</script>
