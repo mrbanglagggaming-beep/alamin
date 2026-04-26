@@ -4217,80 +4217,95 @@ function animateCounter(id,target){
 // ===== TOOLS PAGE =====
 let curCat='';
 async function loadTools(forceRefresh = false){
-  // ✅ MUTEX: একসাথে দুটো loadTools() চলতে দেওয়া হবে না
-  if (window._loadingTools) return;
+  // ✅ MUTEX
+  if (window._loadingTools) { console.log('[loadTools] Already loading, skip'); return; }
   window._loadingTools = true;
 
-  const grid=document.getElementById('toolsGrid');
-  if(grid && !App.tools.length) grid.innerHTML='<div style="text-align:center;padding:40px;grid-column:1/-1"><div class="spinner"></div><div style="color:var(--muted);font-family:var(--font-head);margin-top:12px">লোড হচ্ছে...</div></div>';
+  const grid = document.getElementById('toolsGrid');
 
-  // ✅ CACHE: 5 মিনিটের মধ্যে পুনরায় call করলে cached data দেখাবে
+  // ─── STEP 1: INSTANT RENDER from localStorage (no wait) ───
+  if (!App.tools.length) {
+    try {
+      const localTools = JSON.parse(localStorage.getItem('autoscrip_tools') || '[]');
+      if (Array.isArray(localTools) && localTools.length) {
+        App.tools = localTools;
+        console.log('[loadTools] ⚡ Instant render:', localTools.length, 'tools from localStorage');
+        applyFilters();
+      }
+    } catch(e) { console.warn('[loadTools] localStorage parse error', e); }
+  }
+
+  // Show spinner only if grid is truly empty
+  if (grid && !App.tools.length) {
+    grid.innerHTML = '<div style="text-align:center;padding:40px;grid-column:1/-1"><div class="spinner"></div><div style="color:var(--muted);font-family:var(--font-head);margin-top:12px">লোড হচ্ছে...</div></div>';
+  }
+
+  // ─── STEP 2: 5-MIN CACHE CHECK ───
   const now = Date.now();
   if (!forceRefresh && window._toolsCacheTs && (now - window._toolsCacheTs) < 300000 && App.tools.length > 0) {
+    console.log('[loadTools] ✓ Using fresh cache (<5min)');
     applyFilters();
-    SEOManager.updateMeta('tools',{count:App.tools.length});
+    try { SEOManager.updateMeta('tools', { count: App.tools.length }); } catch(_){}
     window._loadingTools = false;
     return;
   }
 
-  const fbDb = (window.firebase && firebase.apps && firebase.apps.length) ? firebase.firestore() : null;
+  // ─── STEP 3: FIREBASE FETCH (with timeout) ───
+  const fbDb = (window.firebase && firebase.apps && firebase.apps.length) ? firebase.firestore() : (window._fbDb || null);
+
+  if (!fbDb) {
+    console.warn('[loadTools] ⚠️ Firebase not ready — using whatever we have');
+    if (!App.tools.length) {
+      try { if (typeof syncFromAdmin === 'function') syncFromAdmin(); } catch(_){}
+      if (!App.tools.length && Array.isArray(DEFAULT_TOOLS)) App.tools = [...DEFAULT_TOOLS];
+    }
+    applyFilters();
+    try { SEOManager.updateMeta('tools', { count: App.tools.length }); } catch(_){}
+    window._loadingTools = false;
+    return;
+  }
 
   try {
-    if (fbDb) {
-      // ✅ FIX: collection.get() দিয়ে সরাসরি Firestore থেকে read
-      const toolsArray = [];
-      const snap = await fbDb.collection('autoscrip_tools').get();
+    // 15s timeout — যাতে hang না করে
+    const fetchPromise = fbDb.collection('autoscrip_tools').get();
+    const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('Firestore timeout 15s')), 15000));
+    const snap = await Promise.race([fetchPromise, timeoutPromise]);
 
-      snap.forEach(doc => {
-        toolsArray.push({ id: doc.id, _id: doc.id, ...doc.data() });
-      });
+    const toolsArray = [];
+    snap.forEach(doc => toolsArray.push({ id: doc.id, _id: doc.id, ...doc.data() }));
 
-      if (toolsArray.length > 0) {
-        App.tools = toolsArray.sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
-        App.apiOnline = true;
-        console.log('[loadTools] Loaded', App.tools.length, 'tools from Firestore');
-        window._toolsCacheTs = Date.now();
-        try { localStorage.setItem('autoscrip_tools', JSON.stringify(App.tools)); } catch(_) {}
-      } else {
-        // localStorage fallback
-        const localTools = JSON.parse(localStorage.getItem('autoscrip_tools') || '[]');
-        if (localTools.length) {
-          App.tools = localTools;
-          console.log('[loadTools] Using', localTools.length, 'tools from localStorage');
-        } else {
-          syncFromAdmin();
-          if (!App.tools.length) App.tools = [...DEFAULT_TOOLS];
-        }
-      }
+    if (toolsArray.length > 0) {
+      App.tools = toolsArray.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      App.apiOnline = true;
+      window._toolsCacheTs = Date.now();
+      console.log('[loadTools] ✅ Firestore →', App.tools.length, 'tools');
+      try { localStorage.setItem('autoscrip_tools', JSON.stringify(App.tools)); } catch(_){}
     } else {
-      // Firebase না থাকলে localStorage থেকে
-      const localTools = JSON.parse(localStorage.getItem('autoscrip_tools') || '[]');
-      if (localTools.length) {
-        App.tools = localTools;
-        console.log('[loadTools] Firebase unavailable — using', localTools.length, 'from localStorage');
-      } else {
-        syncFromAdmin();
-        if (!App.tools.length) App.tools = [...DEFAULT_TOOLS];
+      console.warn('[loadTools] Firestore returned 0 tools');
+      // keep whatever we already showed (localStorage)
+      if (!App.tools.length) {
+        try { if (typeof syncFromAdmin === 'function') syncFromAdmin(); } catch(_){}
+        if (!App.tools.length && Array.isArray(DEFAULT_TOOLS)) App.tools = [...DEFAULT_TOOLS];
       }
     }
   } catch (error) {
-    console.error('[loadTools] Error:', error);
-    // localStorage fallback
-    try {
-      const localTools = JSON.parse(localStorage.getItem('autoscrip_tools') || '[]');
-      if (localTools.length) {
-        App.tools = localTools;
-      } else if (!App.tools.length) {
-        syncFromAdmin();
-        if (!App.tools.length) App.tools = [...DEFAULT_TOOLS];
+    console.error('[loadTools] ❌ Firestore error:', error.message || error);
+    // Keep localStorage data already rendered — don't wipe
+    if (!App.tools.length) {
+      try {
+        const localTools = JSON.parse(localStorage.getItem('autoscrip_tools') || '[]');
+        if (localTools.length) App.tools = localTools;
+        else if (typeof syncFromAdmin === 'function') { syncFromAdmin(); }
+        if (!App.tools.length && Array.isArray(DEFAULT_TOOLS)) App.tools = [...DEFAULT_TOOLS];
+      } catch(_){
+        if (Array.isArray(DEFAULT_TOOLS)) App.tools = [...DEFAULT_TOOLS];
       }
-    } catch(_) {
-      if (!App.tools.length) App.tools = [...DEFAULT_TOOLS];
     }
   } finally {
     applyFilters();
-    SEOManager.updateMeta('tools',{count:App.tools.length});
+    try { SEOManager.updateMeta('tools', { count: App.tools.length }); } catch(_){}
     window._loadingTools = false;
+    console.log('[loadTools] 🏁 Done. Total tools:', App.tools.length);
   }
 }
 window.filterTools=(cat,el)=>{
