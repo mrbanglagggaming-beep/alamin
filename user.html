@@ -1151,6 +1151,11 @@ footer, .footer { background: #020a14 !important; border-top: 1px solid rgba(31,
 .alert-warning { background: rgba(245,158,11,.1) !important;color: #fbbf24 !important;border: 1px solid rgba(245,158,11,.25) !important; }
 .alert-info    { background: rgba(31,214,176,.1) !important; color: #6eecd6 !important; border: 1px solid rgba(31,214,176,.25) !important; }
 
+/* ── Admin-only elements (hidden from regular users) ─────────── */
+.admin-only-action { display: none !important; }
+body.is-admin .admin-only-action { display: inline-flex !important; }
+body.is-admin .admin-only-action.block { display: block !important; }
+
 /* ── Code / Terminal ─────────────────────────────────────────── */
 pre, code, .ce-area, .code-editor, .hero-terminal {
   background: #030a16 !important; color: #6eecd6 !important;
@@ -1740,7 +1745,7 @@ body {
       <div style="position:absolute;inset:-8px;border-radius:50%;border:2px solid rgba(31,214,176,.3);animation:ld-pulse 1.5s ease infinite"></div>
     </div>
     <div class="ld-logo-text" style="font-family:'Bebas Neue',sans-serif;font-size:2.4rem;color:#1fd6b0;letter-spacing:4px;line-height:1;margin-bottom:4px">AUTOSCRIP</div>
-    <div class="ld-ver" style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--muted);letter-spacing:2px;margin-bottom:24px">POWERSHELL PLATFORM v12 SYMPHONY</div>
+    <div class="ld-ver" style="font-family:'Hind Siliguri','JetBrains Mono',monospace;font-size:.82rem;color:var(--muted);letter-spacing:1px;margin-bottom:24px;line-height:1.6">আপনার প্রতিদিনের কাজ এখন আরও সহজ ⚡<br><span style="font-size:.7rem;opacity:.7">নিরাপদ • দ্রুত • সম্পূর্ণ বাংলায়</span></div>
     <div class="ld-bar" style="width:280px;height:3px;background:rgba(31,214,176,.1);border-radius:2px;overflow:hidden;margin:0 auto 12px">
       <div class="ld-fill" id="ldFill" style="height:100%;background:var(--grad);transition:width .3s ease;width:0%"></div>
     </div>
@@ -2038,8 +2043,8 @@ body {
           <button class="btn btn-outline btn-sm" onclick="downloadScript()"><i class="fas fa-download"></i> .ps1</button>
           <button class="btn btn-outline btn-sm" onclick="exportOutput()"><i class="fas fa-file-alt"></i> আউটপুট</button>
           <button class="btn btn-ghost btn-sm" onclick="openThumbEditor()" title="থাম্বনেল"><i class="fas fa-image"></i></button>
-          <button class="btn btn-ghost btn-sm" onclick="submitScript()" title="সাবমিট"><i class="fas fa-paper-plane"></i> সাবমিট</button>
-          <button class="btn btn-ghost btn-sm" onclick="clearEditor()" title="ক্লিয়ার"><i class="fas fa-trash"></i></button>
+          <button class="btn btn-ghost btn-sm admin-only-action" onclick="submitScript()" title="সাবমিট"><i class="fas fa-paper-plane"></i> সাবমিট</button>
+          <button class="btn btn-ghost btn-sm admin-only-action" onclick="clearEditor()" title="ক্লিয়ার"><i class="fas fa-trash"></i></button>
         </div>
       </div>
       <div id="secCheck" style="display:none;margin-bottom:10px;padding:10px 14px;border-radius:var(--r-md);font-size:.85rem;font-family:var(--font-head)"></div>
@@ -2070,7 +2075,7 @@ Get-Date | Format-List"></textarea>
     <div class="card">
       <div class="d-flex jc-b ai-c mb-3 flex-wrap gap-2">
         <h3 style="color:var(--primary);font-family:var(--font-head)"><i class="fas fa-history"></i> সংরক্ষিত স্ক্রিপ্ট</h3>
-        <button class="btn btn-ghost btn-sm" onclick="clearAllScripts()"><i class="fas fa-trash-alt"></i> সব মুছুন</button>
+        <button class="btn btn-ghost btn-sm admin-only-action" onclick="clearAllScripts()"><i class="fas fa-trash-alt"></i> সব মুছুন</button>
       </div>
       <div id="savedScripts"><div style="text-align:center;color:var(--muted);padding:30px;font-size:.88rem;font-family:var(--font-head)">কোনো সেভ করা স্ক্রিপ্ট নেই।</div></div>
     </div>
@@ -2176,7 +2181,7 @@ Get-Date | Format-List"></textarea>
         <h3 style="color:var(--primary);margin-bottom:20px;font-family:var(--font-head)"><i class="fas fa-sliders-h"></i> অ্যাপ সেটিংস</h3>
         <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px">
           <label class="toggle-wrap"><div class="toggle-switch"><input type="checkbox" id="notifOn" checked><div class="toggle-slider"></div></div><span><div style="font-family:var(--font-head);font-weight:700;font-size:.9rem">নোটিফিকেশন</div><div style="font-size:.78rem;color:var(--muted)">টোস্ট নোটিফিকেশন</div></span></label>
-          <label class="toggle-wrap"><div class="toggle-switch"><input type="checkbox" id="secureMode" checked><div class="toggle-slider"></div></div><span><div style="font-family:var(--font-head);font-weight:700;font-size:.9rem">নিরাপদ মোড</div><div style="font-size:.78rem;color:var(--muted)">বিপজ্জনক কমান্ড ব্লক</div></span></label>
+          <label class="toggle-wrap admin-only-action"><div class="toggle-switch"><input type="checkbox" id="secureMode" checked><div class="toggle-slider"></div></div><span><div style="font-family:var(--font-head);font-weight:700;font-size:.9rem">নিরাপদ মোড</div><div style="font-size:.78rem;color:var(--muted)">বিপজ্জনক কমান্ড ব্লক</div></span></label>
           <label class="toggle-wrap"><div class="toggle-switch"><input type="checkbox" id="autoSaveToggle"><div class="toggle-slider"></div></div><span><div style="font-family:var(--font-head);font-weight:700;font-size:.9rem">অটো সেভ</div><div style="font-size:.78rem;color:var(--muted)">স্বয়ংক্রিয়ভাবে সেভ</div></span></label>
           <label class="toggle-wrap"><div class="toggle-switch"><input type="checkbox" id="syntaxHighlight" checked><div class="toggle-slider"></div></div><span><div style="font-family:var(--font-head);font-weight:700;font-size:.9rem">সিনট্যাক্স হাইলাইট</div><div style="font-size:.78rem;color:var(--muted)">কোড হাইলাইটিং</div></span></label>
         </div>
@@ -2237,7 +2242,7 @@ Get-Date | Format-List"></textarea>
     <div class="footer-grid">
       <div>
         <div class="footer-brand">⚡ AUTOSCRIP</div>
-        <div class="footer-ver-t">POWERSHELL PLATFORM</div>
+        <div class="footer-ver-t">আপনার বিশ্বস্ত স্ক্রিপ্ট পার্টনার</div>
         <p class="footer-desc">বাংলাদেশের প্রথম নিরাপদ PowerShell প্ল্যাটফর্ম। AI-চালিত স্ক্রিপ্ট জেনারেটর, অ্যাডমিন-অ্যাপ্রুভড টুলস এবং সক্রিয় কমিউনিটি।</p>
         <div class="footer-social">
           <a class="social-btn" href="https://www.facebook.com/groups/autoscrip" target="_blank" rel="noopener" title="Facebook"><i class="fab fa-facebook-f"></i></a>
@@ -2278,7 +2283,7 @@ Get-Date | Format-List"></textarea>
       <span>© 2026 AutoScrip — সকল অধিকার সংরক্ষিত</span>
       <div class="d-flex gap-2 ai-c">
         <span class="sec-badge"><i class="fas fa-shield-alt"></i> ১০০% নিরাপদ</span>
-        <span style="font-family:var(--font-code);font-size:.75rem;color:var(--muted)">v12 Symphony</span>
+        <span style="font-family:var(--font-code);font-size:.75rem;color:var(--muted)">তৈরি বাংলাদেশে 🇧🇩</span>
       </div>
     </div>
   </div>
@@ -2480,7 +2485,7 @@ Get-Date | Format-List"></textarea>
       <div style="text-align:center;margin-bottom:20px">
         <div style="font-size:2.5rem;margin-bottom:8px">⚡</div>
         <div style="font-size:1.4rem;font-weight:800;color:var(--primary);letter-spacing:2px">AUTOSCRIP</div>
-        <div style="font-size:.78rem;color:var(--muted);letter-spacing:4px;margin-top:4px">POWERSHELL PLATFORM</div>
+        <div style="font-size:.78rem;color:var(--muted);letter-spacing:3px;margin-top:4px">আপনার স্ক্রিপ্ট পার্টনার</div>
       </div>
       <p style="color:var(--muted);line-height:1.8;margin-bottom:14px">AutoScrip হলো বাংলাদেশের প্রথম নিরাপদ PowerShell প্ল্যাটফর্ম। আমরা AI-চালিত স্ক্রিপ্ট জেনারেটর, অ্যাডমিন-অ্যাপ্রুভড টুলস এবং একটি সক্রিয় কমিউনিটি নিয়ে কাজ করি।</p>
       <p style="color:var(--muted);line-height:1.8">আমাদের লক্ষ্য হলো বাংলাদেশি IT পেশাদার এবং শিক্ষার্থীদের জন্য PowerShell শেখা ও ব্যবহার করা সহজ করে তোলা।</p>
@@ -3669,13 +3674,16 @@ function updateUserUI(){
     if(nm)nm.textContent=(App.user.name||App.user.email||'ইউজার').substring(0,18);
     if(li)li.style.display='none';if(ri)ri.style.display='none';
     if(lo)lo.style.display='flex';if(slb)slb.style.display='block';
-    if(admi)admi.style.display=(App.user.role==='admin')?'flex':'none';
+    const _isAdm = (App.user.role==='admin');
+    if(admi)admi.style.display=_isAdm?'flex':'none';
+    document.body.classList.toggle('is-admin', _isAdm);
   }else{
     if(ico)ico.innerHTML='<i class="fas fa-user"></i>';
     if(nm)nm.textContent='গেস্ট ব্যবহারকারী';
     if(li)li.style.display='flex';if(ri)ri.style.display='flex';
     if(lo)lo.style.display='none';if(slb)slb.style.display='none';
     if(admi)admi.style.display='none';
+    document.body.classList.remove('is-admin');
   }
 }
 window.openLoginModal=()=>openModal('loginModal');
@@ -4445,7 +4453,7 @@ function loadScripts(){renderSavedScripts();}
 window.runScript=()=>{
   const code=document.getElementById('scriptEditor').value.trim();
   if(!code){toast('স্ক্রিপ্ট লিখুন!','warning');return;}
-  if(App.settings.secureMode){const{safe}=Security.check(code);if(!safe){toast('⚠️ বিপজ্জনক কমান্ড ব্লক!','error');return;}}
+  if(App.settings.secureMode && document.body.classList.contains('is-admin')){const{safe}=Security.check(code);if(!safe){toast('⚠️ বিপজ্জনক কমান্ড ব্লক!','error');return;}}
   simulateRun(code);
   if(App.settings.autoSave)saveScript();
   Analytics.toolRun(document.getElementById('scriptName').value||'unnamed');
@@ -4540,6 +4548,9 @@ window.analyzeScript=()=>{
 window.liveSecCheck=()=>{
   const code=document.getElementById('scriptEditor').value;
   const el=document.getElementById('secCheck');
+  if(!el) return;
+  // Live security warning shown only to admins — regular users see a clean editor
+  if(!document.body.classList.contains('is-admin')){el.style.display='none';return;}
   if(!code.trim()||!App.settings.secureMode){el.style.display='none';return;}
   const{safe}=Security.check(code);
   el.style.display='block';
@@ -4551,7 +4562,7 @@ window.submitScript=()=>{
   const code=document.getElementById('scriptEditor').value.trim();const name=document.getElementById('scriptName').value.trim();
   if(!code||!name){toast('নাম ও কোড দিন','error');return;}
   const{safe}=Security.check(code);
-  if(!safe){toast('বিপজ্জনক কমান্ড সাবমিট করা যাবে না!','error');return;}
+  if(!safe && document.body.classList.contains('is-admin')){toast('বিপজ্জনক কমান্ড সাবমিট করা যাবে না!','error');return;}
   sendToAdmin('script',{name,code,category:document.getElementById('scriptCategory').value,author:App.user.name||''});
 };
 window.openAIModal=()=>{if(!App.user){toast('AI ব্যবহারে লগইন করুন','warning');openModal('loginModal');return;}openModal('aiModal');};
