@@ -5903,7 +5903,7 @@ const FIREBASE_CONFIG = {
     databaseId:        "(default)"
 };
 
-const ADMIN_UID_MASTER   = "E97OGEv5ZJFbHaoojCnFe25GSeY1";
+const ADMIN_UID_MASTER   = "9doS49dpnZRzrOaOg25VH7bkDlf1";
 
 // ✅ FIX: Firestore WebChannel নয়েজি errors suppress করো
 // (404, WebChannel, Listen errors — এগুলো normal long-polling fallback behavior)
@@ -10904,7 +10904,7 @@ service cloud.firestore {
     function isAdmin() {
       return request.auth != null &amp;&amp; (
         request.auth.token.email == '<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="08657a6a69666f64696f6f6f696561666f486f65696164266b6765">[email&#160;protected]</a>' ||
-        request.auth.uid == 'E97OGEv5ZJFbHaoojCnFe25GSeY1' ||
+        request.auth.uid == '9doS49dpnZRzrOaOg25VH7bkDlf1' ||
         exists(/databases/$(database)/documents/autoscrip_admins/$(request.auth.uid))
       );
     }
