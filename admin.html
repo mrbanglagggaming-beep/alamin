@@ -1,143 +1,61 @@
 <script>
-// ═══════════════════════════════════════════════════════════════════
-// AUTOSCRIP ADMIN KILL SWITCH v3 — Complete Read test loop terminator
-// fetch→429 + eval + Function + setInterval + setTimeout + 
-// createElement(script) + MessageChannel — সব patch করা হয়েছে
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// AUTOSCRIP ADMIN KILL SWITCH v4 — SAFE
+// শুধু pageSize=5 diagnostic loop block করে
+// setTimeout, eval, Function, createElement — patch করে না
+// Firefox সহ সব browser এ Firebase SDK নিরাপদ
+// ═══════════════════════════════════════════════════════════
 (function(){
   'use strict';
+  if (window._fcKillSwitchActive) return;
 
-  // ── Helper: Read test loop সনাক্ত করো ────────────────────────
-  function _isReadTest(s){
-    var str = String(s||'');
-    return str.indexOf('Read test')>=0 || str.indexOf('pageSize=5')>=0 ||
-           str.indexOf('pageSize%3D5')>=0;
+  function _isDiag(url) {
+    var u = String(url || '');
+    return u.indexOf('pageSize=5') >= 0 || u.indexOf('pageSize%3D5') >= 0;
   }
 
-  // ── 1. fetch → 429 (loop নিজেই বন্ধ হবে) ────────────────────
-  var _ft=window.fetch;
-  window.fetch=function(url,opts){
-    var u=String(url||'');
-    // Block any pageSize=5 diagnostic loop request
-    var _isLoop = u.indexOf('pageSize=5')>=0 || u.indexOf('pageSize%3D5')>=0 ||
-                  (u.indexOf('autoscrip_tools')>=0 && u.indexOf('pageSize')>=0) ||
-                  (u.indexOf('documents/autoscrip_tools?')>=0);
-    if(_isLoop){
-      // Return HANGING Promise — never resolves or rejects
-      // This kills both .then() AND .catch() chains permanently
-      return new Promise(function(){/* intentionally hangs — kills Read test loop */});
+  var _origFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    if (_isDiag(url)) {
+      console.warn('[KS v4] Diagnostic blocked');
+      return Promise.resolve(new Response(
+        JSON.stringify({ error: { code: 429, status: 'RESOURCE_EXHAUSTED' } }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      ));
     }
-    return _ft.apply(window,arguments);
+    return _origFetch.apply(this, arguments);
   };
+  window._originalFetch = _origFetch;
 
-  // ── 2. XHR patch ─────────────────────────────────────────────
-  var _xo=XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open=function(m,url){
-    var _u=String(url||'');
-    this.__ks = _u.indexOf('pageSize=5')>=0 || _u.indexOf('pageSize%3D5')>=0 ||
-                (_u.indexOf('autoscrip_tools')>=0 && _u.indexOf('pageSize')>=0) ||
-                _u.indexOf('documents/autoscrip_tools?')>=0;
-    if(this.__ks)return;
-    return _xo.apply(this,arguments);
-  };
-  var _xs=XMLHttpRequest.prototype.send;
-  XMLHttpRequest.prototype.send=function(){
-    if(this.__ks){
-      // Fake 429 for XHR too
-      var self=this;
-      setTimeout(function(){
-        Object.defineProperty(self,'status',{get:function(){return 429;}});
-        Object.defineProperty(self,'readyState',{get:function(){return 4;}});
-        if(self.onreadystatechange)try{self.onreadystatechange();}catch(_){}
-        if(self.onerror)try{self.onerror(new Error('429'));}catch(_){}
-      },0);
-      return;
+  var _origSI = window.setInterval;
+  window.setInterval = function(fn, delay) {
+    var s = typeof fn === 'function' ? fn.toString() : String(fn || '');
+    if (s.indexOf('Read test') >= 0 || s.indexOf('pageSize=5') >= 0) {
+      console.warn('[KS v4] Diagnostic interval blocked');
+      return 0;
     }
-    return _xs.apply(this,arguments);
+    return _origSI.apply(window, arguments);
   };
 
-  // ── 3. eval patch ─────────────────────────────────────────────
-  var _ev=window.eval;
-  window.eval=function(code){
-    if(_isReadTest(code)){return undefined;}
-    return _ev.call(window,code);
-  };
+  window._fcKillSwitchActive = true;
+  window._migrationDone      = true;
+  window._readTestKilled     = true;
+  window._blockDiagLoop      = true;
 
-  // ── 4. new Function patch ─────────────────────────────────────
-  var _Fn=window.Function;
-  window.Function=function(){
-    var a=Array.prototype.slice.call(arguments);
-    var b=String(a[a.length-1]||'');
-    if(_isReadTest(b)){return function(){};}
-    return _Fn.apply(this,a);
-  };
-  window.Function.prototype=_Fn.prototype;
-
-  // ── 5. setInterval patch ──────────────────────────────────────
-  var _si=window.setInterval;
-  window.setInterval=function(fn,d){
-    if(_isReadTest(typeof fn==='function'?fn.toString():fn)){return 0;}
-    return _si.apply(window,arguments);
-  };
-
-  // ── 6. setTimeout — Read test specific block (Firebase-safe)
-  // ── Smart setTimeout: Read test loop block, Firebase-safe ──────
-  var _stOrig=window.setTimeout;
-  window.setTimeout=function(fn,delay){
-    if(typeof fn==='function'&&(delay===undefined||delay>=800)){
-      var s=fn.toString();
-      if(s.indexOf('Read test')>=0||s.indexOf('pageSize=5')>=0||s.indexOf('readTest')>=0){
-        console.warn('[KS] setTimeout blocked (Read test loop)');
-        return 0;
-      }
-    }
-    return _stOrig.apply(window,arguments);
-  };
-
-  // ── 7. document.createElement('script') patch ────────────────
-  // VM146, VM147... scripts তৈরি বন্ধ করো
-  var _ce=document.createElement.bind(document);
-  document.createElement=function(tag){
-    if(String(tag).toLowerCase()==='script'){
-      // Script তৈরি হলে src ও textContent monitor করো
-      var el=_ce(tag);
-      var _origSrcSet=Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype,'src');
-      var _origTextSet=Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype,'text');
-      Object.defineProperty(el,'src',{
-        set:function(v){
-          if(_isReadTest(v)){return;} // Read test URL block
-          if(_origSrcSet&&_origSrcSet.set)_origSrcSet.set.call(this,v);
-        },
-        get:function(){return _origSrcSet&&_origSrcSet.get?_origSrcSet.get.call(this):'';}
-      });
-      return el;
-    }
-    return _ce(tag);
-  };
-
-  // ── 8. MessageChannel patch ───────────────────────────────────
-  if(typeof MessageChannel!=='undefined'){
-    var _MC=window.MessageChannel;
-    window.MessageChannel=function(){
-      var mc=new _MC();
-      return mc;
-    };
-  }
-
-  // ── 9. PATCHED: clearInterval loop removed — was breaking legitimate Firebase intervals
-
-  // ── 10. Global flags ──────────────────────────────────────────
-  window._fbQuotaUntil    = Date.now()+(5*60*1000);
-  window._migrationDone   = true;
-  window._readTestKilled  = true;
-  window._quotaBackoff    = 0;
-  window._blockDiagLoop   = true;
-
-  // ── 11. Poison the "Read test" function if it exists ─────────
-  // Firebase SDK internal test function intercept
-  window._originalFetch = _ft; // save for legitimate use
-
-  console.log('[AutoScrip] Admin Kill switch v3 active ✓ — fetch→429, eval, Function, setTimeout, createElement patched');
+  console.log('[AutoScrip] Kill switch v4 active — Firebase safe');
+})();
+</script>
+<script>
+// ✅ Firestore WebChannel console noise suppress
+(function(){
+  if(window._suppressNoise)return;
+  window._suppressNoise=true;
+  var _ce=console.error,_cw=console.warn;
+  var _S=['WebChannelConnection','transport errored','Listen/channel',
+    'WebChannel','google.firestore.v1','404 (Not Found)',
+    'Could not reach Cloud Firestore','Failed to get document'];
+  console.error=function(){var m=Array.prototype.slice.call(arguments).join(' ');if(_S.some(function(s){return m.indexOf(s)>=0;}))return;_ce.apply(console,arguments);};
+  console.warn=function(){var m=Array.prototype.slice.call(arguments).join(' ');if(_S.some(function(s){return m.indexOf(s)>=0;}))return;_cw.apply(console,arguments);};
 })();
 </script>
 
@@ -161,7 +79,6 @@
   <link rel="stylesheet" href="shared.css">
   <!-- Firebase SDK -->
   <script>
-// [Kill switch v3] Anti-killswitch disabled — fetch patch maintained
   (function() {
     var VER = '10.7.1';
     // CDN priority: jsdelivr first (most reliable globally), then gstatic, then unpkg
@@ -5942,7 +5859,7 @@ let fbApp, fbAuth, fbDb;
                 fbApp = firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
                 fbAuth = firebase.auth();
                 fbDb   = firebase.firestore();
-                try { fbDb.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED, experimentalForceLongPolling: false, experimentalAutoDetectLongPolling: true, ignoreUndefinedProperties: true, merge: true }); } catch(e) {} /* PATCHED: optimized settings */
+                try { fbDb.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED, experimentalForceLongPolling: true, experimentalAutoDetectLongPolling: false, ignoreUndefinedProperties: true, merge: true }); } catch(e) {} /* PATCHED: optimized settings */
                 // Use long-polling to avoid WebChannel 404 errors on some networks
                 try {
                     fbDb.settings({
@@ -11319,55 +11236,6 @@ async function syncLocalBackupToFirestore() {
 <!-- AutoScrip shared utilities -->
 <!-- firebase-config.js removed: config is inline -->
 
-<script>
-// ═══════════════════════════════════════════════════════════
-// PERSISTENT FETCH PATCH — firebase-config.js load এর পরেও active
-// pageSize=5 বা autoscrip_tools diagnostic loop সবসময় block
-// ═══════════════════════════════════════════════════════════
-(function _persistFetchPatch(){
-  function _isLoop(u){
-    var s=String(u||'');
-    return s.indexOf('pageSize=5')>=0||s.indexOf('pageSize%3D5')>=0||
-           (s.indexOf('autoscrip_tools')>=0&&s.indexOf('pageSize')>=0&&s.indexOf('documents/')>=0);
-  }
-  
-  function _applyPatch(){
-    // fetch patch
-    var _nativeFetch=window._nativeFetch||window.fetch;
-    if(!window._nativeFetch)window._nativeFetch=window.fetch;
-    window.fetch=function(url,opts){
-      if(_isLoop(url)){
-        return new Promise(function(){/* never resolves — kills Read test loop */});
-      }
-      return _nativeFetch.apply(window,arguments);
-    };
-    // XHR patch
-    if(!XMLHttpRequest.prototype._xhrPatched){
-      var _xo=XMLHttpRequest.prototype.open;
-      XMLHttpRequest.prototype.open=function(m,url){
-        this.__loop=_isLoop(url);
-        if(!this.__loop)return _xo.apply(this,arguments);
-      };
-      var _xs=XMLHttpRequest.prototype.send;
-      XMLHttpRequest.prototype.send=function(){
-        if(!this.__loop)return _xs.apply(this,arguments);
-      };
-      XMLHttpRequest.prototype._xhrPatched=true;
-    }
-  }
 
-  // Apply immediately
-  _applyPatch();
-  
-  // Re-apply every 500ms for 30 seconds (to handle deferred scripts)
-  var _reapplyCount=0;
-  var _iv=setInterval(function(){
-    _applyPatch();
-    if(++_reapplyCount>=60)clearInterval(_iv); // stop after 30s
-  },500);
-  
-  console.log('[AutoScrip] Persistent fetch patch active ✓');
-})();
-</script>
 </body>
 </html>
