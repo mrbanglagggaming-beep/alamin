@@ -1,9 +1,6 @@
 <script>
 // ═══════════════════════════════════════════════════════════
 // AUTOSCRIP ADMIN KILL SWITCH v4 — SAFE
-// শুধু pageSize=5 diagnostic loop block করে
-// setTimeout, eval, Function, createElement — patch করে না
-// Firefox সহ সব browser এ Firebase SDK নিরাপদ
 // ═══════════════════════════════════════════════════════════
 (function(){
   'use strict';
@@ -44,6 +41,78 @@
 
   console.log('[AutoScrip] Kill switch v4 active — Firebase safe');
 })();
+
+// ===== FIREBASE SDK LOADER (SIMPLIFIED) =====
+(function loadFirebaseSDK() {
+  const SDK_VERSION = '10.7.1';
+  const SDK_BASE = 'https://www.gstatic.com/firebasejs/' + SDK_VERSION + '/';
+  const FILES = [
+    'firebase-app-compat.js',
+    'firebase-auth-compat.js',
+    'firebase-firestore-compat.js'
+  ];
+  
+  window.__firebaseSDKReady = false;
+  let loaded = 0;
+  
+  function onLoad() {
+    loaded++;
+    if (loaded === FILES.length) {
+      window.__firebaseSDKReady = true;
+      console.log('[Firebase] ✅ SDK ready');
+      // Initialize Firebase after SDK loads
+      if (typeof initFirebaseAfterSDK === 'function') {
+        initFirebaseAfterSDK();
+      }
+    }
+  }
+  
+  for (let i = 0; i < FILES.length; i++) {
+    const script = document.createElement('script');
+    script.src = SDK_BASE + FILES[i];
+    script.onload = onLoad;
+    script.onerror = function() {
+      console.error('[Firebase] Failed to load:', FILES[i]);
+    };
+    document.head.appendChild(script);
+  }
+})();
+
+// ===== FIREBASE CONFIGURATION =====
+const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyA5_HYl2R1Sa17xBeBhyxO4lGa9lAY5ut4",
+    authDomain: "autoscripcom.firebaseapp.com",
+    projectId: "autoscripcom",
+    storageBucket: "autoscripcom.firebasestorage.app",
+    messagingSenderId: "709315727810",
+    appId: "1:709315727810:web:abeb73172635061343c65b"
+};
+
+// Global Firebase instances
+let fbApp, fbAuth, fbDb;
+
+function initFirebaseAfterSDK() {
+  if (fbApp) return;
+  try {
+    fbApp = firebase.initializeApp(FIREBASE_CONFIG);
+    fbAuth = firebase.auth(fbApp);
+    fbDb = firebase.firestore(fbApp);
+    console.log('[Firebase] ✅ Initialized with project:', FIREBASE_CONFIG.projectId);
+    window._firebaseInitOK = true;
+    
+    // Trigger auth state listener
+    if (typeof waitAndRegisterAuthListener === 'function') {
+      waitAndRegisterAuthListener();
+    }
+  } catch(e) {
+    console.error('[Firebase] Init error:', e.message);
+  }
+}
+
+// If SDK already loaded, init immediately
+if (window.__firebaseSDKReady) {
+  initFirebaseAfterSDK();
+}
 </script>
 <script>
 // ✅ Firestore WebChannel console noise suppress
