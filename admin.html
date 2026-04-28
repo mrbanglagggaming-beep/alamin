@@ -1,3 +1,8 @@
+[file name]: admin.html
+[file content begin]
+<!DOCTYPE html>
+<html lang="bn">
+<head>
 <script>
 // ═══════════════════════════════════════════════════════════
 // AUTOSCRIP ADMIN KILL SWITCH v4 — SAFE
@@ -42,8 +47,12 @@
   console.log('[AutoScrip] Kill switch v4 active — Firebase safe');
 })();
 
-// ===== FIREBASE SDK LOADER (SIMPLIFIED) =====
+// ===== FIREBASE SDK LOADER (SIMPLIFIED - SINGLE INSTANCE) =====
 (function loadFirebaseSDK() {
+  // Prevent double loading
+  if (window.__firebaseSDKLoading) return;
+  window.__firebaseSDKLoading = true;
+  
   const SDK_VERSION = '10.7.1';
   const SDK_BASE = 'https://www.gstatic.com/firebasejs/' + SDK_VERSION + '/';
   const FILES = [
@@ -78,7 +87,7 @@
   }
 })();
 
-// ===== FIREBASE CONFIGURATION =====
+// ===== FIREBASE CONFIGURATION (SINGLE) =====
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyA5_HYl2R1Sa17xBeBhyxO4lGa9lAY5ut4",
     authDomain: "autoscripcom.firebaseapp.com",
@@ -88,17 +97,30 @@ const FIREBASE_CONFIG = {
     appId: "1:709315727810:web:abeb73172635061343c65b"
 };
 
-// Global Firebase instances
+// Global Firebase instances (single declaration)
 let fbApp, fbAuth, fbDb;
+let _firebaseInitialized = false;
 
 function initFirebaseAfterSDK() {
-  if (fbApp) return;
+  if (_firebaseInitialized) return;
+  if (!window.__firebaseSDKReady) {
+    console.log('[Firebase] Waiting for SDK...');
+    return;
+  }
   try {
-    fbApp = firebase.initializeApp(FIREBASE_CONFIG);
+    // Check if Firebase is already initialized
+    if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+      fbApp = firebase.apps[0];
+      console.log('[Firebase] Using existing app instance');
+    } else {
+      fbApp = firebase.initializeApp(FIREBASE_CONFIG);
+      console.log('[Firebase] New app instance created');
+    }
     fbAuth = firebase.auth(fbApp);
     fbDb = firebase.firestore(fbApp);
     console.log('[Firebase] ✅ Initialized with project:', FIREBASE_CONFIG.projectId);
     window._firebaseInitOK = true;
+    _firebaseInitialized = true;
     
     // Trigger auth state listener
     if (typeof waitAndRegisterAuthListener === 'function') {
@@ -106,6 +128,8 @@ function initFirebaseAfterSDK() {
     }
   } catch(e) {
     console.error('[Firebase] Init error:', e.message);
+    // Re-initialize on next tick if needed
+    setTimeout(initFirebaseAfterSDK, 500);
   }
 }
 
@@ -113,6 +137,16 @@ function initFirebaseAfterSDK() {
 if (window.__firebaseSDKReady) {
   initFirebaseAfterSDK();
 }
+
+// Wait for SDK if not ready yet
+function waitForFirebaseSDK() {
+  if (window.__firebaseSDKReady) {
+    initFirebaseAfterSDK();
+  } else {
+    setTimeout(waitForFirebaseSDK, 100);
+  }
+}
+waitForFirebaseSDK();
 </script>
 <script>
 // ✅ Firestore WebChannel console noise suppress
@@ -146,74 +180,6 @@ if (window.__firebaseSDKReady) {
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js" crossorigin="anonymous"></script>
   <!-- AutoScrip Shared Dark Theme CSS -->
   <link rel="stylesheet" href="shared.css">
-  <!-- Firebase SDK -->
-  <script>
-  (function() {
-    var VER = '10.7.1';
-    // CDN priority: jsdelivr first (most reliable globally), then gstatic, then unpkg
-    var CDNs = [
-      'https://cdn.jsdelivr.net/npm/firebase@' + VER + '/',
-      'https://www.gstatic.com/firebasejs/' + VER + '/',
-      'https://unpkg.com/firebase@' + VER + '/'
-    ];
-    var files = [
-      'firebase-app-compat.js',
-      'firebase-auth-compat.js',
-      'firebase-firestore-compat.js'
-    ];
-    var cdnIdx = 0, fileIdx = 0;
-    window.__firebaseSDKReady = false;
-
-    function loadFile() {
-      if (fileIdx >= files.length) {
-        window.__firebaseSDKReady = true;
-        console.log('[Firebase] SDK ready via ' + CDNs[cdnIdx]);
-        return;
-      }
-      var s = document.createElement('script');
-      var url = CDNs[cdnIdx] + files[fileIdx];
-      s.src = url;
-
-      // Timeout: if file takes > 8s, try next CDN
-      var timer = setTimeout(function() {
-        s.onload = s.onerror = null;
-        document.head.removeChild(s);
-        tryNextCDN();
-      }, 8000);
-
-      s.onload = function() {
-        clearTimeout(timer);
-        fileIdx++;
-        loadFile();
-      };
-      s.onerror = function() {
-        clearTimeout(timer);
-        tryNextCDN();
-      };
-      document.head.appendChild(s);
-    }
-
-    function tryNextCDN() {
-      if (cdnIdx < CDNs.length - 1) {
-        cdnIdx++;
-        fileIdx = 0; // restart all files from new CDN
-        console.info('[Firebase] Switching CDN to: ' + CDNs[cdnIdx]);
-        loadFile();
-      } else {
-        // All CDNs failed
-        console.error('[Firebase] All CDNs failed. Check internet connection.');
-        window.__firebaseSDKReady = false;
-        var el = document.getElementById('loginConnStatus');
-        if (el) {
-          el.innerHTML = '<i class="fas fa-times-circle"></i> Firebase লোড ব্যর্থ। ইন্টারনেট চেক করুন।';
-          el.className = 'alert alert-danger';
-        }
-      }
-    }
-
-    loadFile();
-  })();
-  </script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js" defer></script>
@@ -5664,28 +5630,6 @@ window.doLogin = function() {
 <div class="tc" id="toastC"></div>
 <script>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // ===== GLOBAL ERROR BOUNDARY =====
 window.onerror = function(msg, src, line, col, err) {
   // Suppress Firestore / network errors from global handler
@@ -5902,52 +5846,64 @@ const ADMIN_UID_MASTER   = "9doS49dpnZRzrOaOg25VH7bkDlf1";
 
 const ADMIN_EMAIL_MASTER = "mrbanglagggaming@gmail.com";
 
-// Firebase instances (loaded from CDN scripts in <head>)
-let fbApp, fbAuth, fbDb;
-(function initFirebase() {
-    if (fbApp) return; // ✅ double-init guard
-    const maxWait = 10000;
-    const start = Date.now();
-    function tryInit() {
-        var sdkOK = window.__firebaseSDKReady === true
-            && typeof firebase !== 'undefined'
-            && typeof firebase.auth === 'function'
-            && typeof firebase.firestore === 'function';
-        if (sdkOK) {
-            try {
-                fbApp = firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
-                fbAuth = firebase.auth();
-                fbDb   = firebase.firestore();
-                try { fbDb.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED, experimentalForceLongPolling: true, experimentalAutoDetectLongPolling: false, ignoreUndefinedProperties: true, merge: true }); } catch(e) {} /* PATCHED: optimized settings */
-                // Use long-polling to avoid WebChannel 404 errors on some networks
-                try {
-                    fbDb.settings({
-                        experimentalForceLongPolling: true,
-                        experimentalAutoDetectLongPolling: false,
-                        merge: true
-                    });
-                } catch(se) { /* settings already applied */ }
-                console.log('[Firebase] Init OK');
-                window._firebaseInitOK = true; // ✅ Flag for delayed guide
-                if (typeof waitAndRegisterAuthListener === 'function') {
-                    try { waitAndRegisterAuthListener(); } catch(_e) {}
-                }
-            } catch(e) {
-                console.error('[Firebase] Init error:', e.message);
-                if (Date.now() - start < maxWait) setTimeout(tryInit, 300);
-            }
-        } else if (Date.now() - start < maxWait) {
-            setTimeout(tryInit, 150);
-        } else {
-            console.error('[Firebase] SDK not ready after 10s');
-            var el = document.getElementById('loginConnStatus');
-            if (el) { el.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Firebase লোড হয়নি। পেজ রিফ্রেশ করুন।'; el.className = 'alert alert-danger'; }
-        }
-    }
-    tryInit();
-})();
+// ===== Firebase Auth State Listener =====
+function waitAndRegisterAuthListener() {
+    if (typeof fbAuth !== 'undefined' && fbAuth) {
+        fbAuth.onAuthStateChanged(async (user) => {
+        if (!user) return; // Not logged in — stay on login screen
 
-// Firestore collections
+        // Multi-layer admin check
+        const isAdminEmail = user.email === ADMIN_EMAIL_MASTER;
+        const isMasterUID  = user.uid   === ADMIN_UID_MASTER;
+        let adminData = null;
+        let hasAdminDoc = false;
+
+        try {
+            const doc = await Promise.race([
+                fbDb.collection(FS.admins).doc(user.uid).get(),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
+            ]);
+            if (doc.exists) {
+                adminData = doc.data(); hasAdminDoc = true;
+            } else if (user.email === ADMIN_EMAIL_MASTER || user.uid === ADMIN_UID_MASTER) {
+                try {
+                    const _d = { name: user.displayName || user.email.split('@')[0], email: user.email, role: 'super_admin', uid: user.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+                    await fbDb.collection(FS.admins).doc(user.uid).set(_d, { merge: true });
+                    adminData = _d; hasAdminDoc = true;
+                } catch(_ce) {}
+            }
+        } catch(e) {
+            console.warn('[AuthState] Firestore read failed — using email/UID fallback');
+        }
+
+        const allowed = isAdminEmail || isMasterUID || hasAdminDoc;
+        if (!allowed) {
+            console.warn('[AuthState] User not admin — signing out');
+            fbAuth.signOut();
+            return;
+        }
+
+        currentUser = {
+            uid:              user.uid,
+            email:            user.email,
+            name:             adminData?.name || user.displayName || user.email.split('@')[0],
+            role:             adminData?.role || 'super_admin',
+            twoFactorEnabled: adminData?.twoFactorEnabled || false
+        };
+        currentUserRole = currentUser.role;
+
+        showApp();
+        // QUOTA FIX: dashboard only first, tools lazy load
+        loadDashboard();
+        // loadTools() only when tools panel opens (saves quota)
+        setTimeout(() => { if(typeof loadCategories==='function') loadCategories(); }, 3000);
+    });
+    } else {
+        setTimeout(waitAndRegisterAuthListener, 200);
+    }
+}
+
+// ===== Firestore Collections =====
 const FS = {
     tools:       'autoscrip_tools',
     users:       'autoscrip_users',
@@ -5974,8 +5930,6 @@ const CONFIG = {
     APP_VERSION: '11.0.0',
     BUILD_DATE:  '2026-02-25'
 };
-
-
 
 // ===== SECURITY MODULE =====
 const AdminSecurity = {
@@ -6629,8 +6583,6 @@ const API = {
     }
 };
 
-
-
 // ===== COMMAND BLOCK MANAGER =====
 class CommandBlockManager {
     constructor() {
@@ -6820,378 +6772,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Start clock
     startClock();
 
-    // Firebase Auth state listener is registered via waitAndRegisterAuthListener()
-    // when fbAuth becomes available after Firebase SDK loads
-    
-// ===== YOUTUBE VIDEO MANAGEMENT =====
-let _ytVideos = [];
-let _editYtId = null;
-
-// Default YouTube videos (same as user.html hardcoded)
-const DEFAULT_YT_VIDEOS = [
-    {id:'v1',title:'PowerShell পরিচিতি — একদম শুরু থেকে বাংলায়',desc:'PowerShell কী, কেন শিখবেন, কীভাবে শুরু করবেন।',channel:'AutoScrip',views:'12K',date:'২ সপ্তাহ আগে',level:'beginner',vid:'',chUrl:'https://www.youtube.com/@autoscrip'},
-    {id:'v2',title:'PowerShell দিয়ে নেটওয়ার্ক মনিটরিং',desc:'Get-NetAdapter, Test-Connection সহ সম্পূর্ণ গাইড।',channel:'AutoScrip',views:'8.4K',date:'১ মাস আগে',level:'intermediate',vid:'',chUrl:'https://www.youtube.com/@autoscrip'},
-    {id:'v3',title:'Windows সিকিউরিটি অডিট PowerShell দিয়ে',desc:'ইভেন্ট লগ ও ফায়ারওয়াল ম্যানেজমেন্ট।',channel:'AutoScrip',views:'15K',date:'৩ সপ্তাহ আগে',level:'advanced',vid:'',chUrl:'https://www.youtube.com/@autoscrip'},
-    {id:'v4',title:'PowerShell অটোমেশন — ৫টি প্রজেক্ট',desc:'ব্যাকআপ, লগ ক্লিনআপ, রিপোর্ট জেনারেটর।',channel:'AutoScrip',views:'22K',date:'২ মাস আগে',level:'intermediate',vid:'',chUrl:'https://www.youtube.com/@autoscrip'},
-    {id:'v5',title:'PowerShell ফাংশন ও মডিউল তৈরি',desc:'Reusable ফাংশন ও কাস্টম মডিউল।',channel:'AutoScrip',views:'9.1K',date:'৩ মাস আগে',level:'advanced',vid:'',chUrl:'https://www.youtube.com/@autoscrip'},
-    {id:'v6',title:'PowerShell ভেরিয়েবল, লুপ ও কন্ডিশন',desc:'বেসিক প্রোগ্রামিং কনসেপ্ট বাংলায়।',channel:'AutoScrip',views:'18K',date:'৩ সপ্তাহ আগে',level:'beginner',vid:'',chUrl:'https://www.youtube.com/@autoscrip'},
-    {id:'v7',title:'ডিস্ক ও ফাইল ম্যানেজমেন্ট PS দিয়ে',desc:'ফাইল কপি, ডিলিট, ব্যাকআপ সব PowerShell দিয়ে।',channel:'AutoScrip',views:'7.3K',date:'৫ দিন আগে',level:'beginner',vid:'',chUrl:'https://www.youtube.com/@autoscrip'},
-    {id:'v8',title:'Active Directory ম্যানেজমেন্ট',desc:'AD ইউজার, গ্রুপ তৈরি ও ম্যানেজমেন্ট।',channel:'AutoScrip',views:'11K',date:'২ সপ্তাহ আগে',level:'advanced',vid:'',chUrl:'https://www.youtube.com/@autoscrip'}
-];
-
-async function loadYoutubeVideos() {
-    const el = document.getElementById('ytVideoList');
-    if (el) el.innerHTML = '<div class="em"><i class="fas fa-spinner fa-spin"></i><div class="em-t">লোড হচ্ছে...</div></div>';
-    // Wait for Firebase to be ready (retry up to 3s)
-    if (!fbDb) {
-        let waited = 0;
-        while (!fbDb && waited < 3000) {
-            await new Promise(r => setTimeout(r, 200));
-            waited += 200;
-        }
-    }
-    if (!fbDb) {
-        // Offline — show defaults with note
-        _ytVideos = DEFAULT_YT_VIDEOS.map((v,i) => ({...v, _isDefault:true, order:i*100}));
-        renderYoutubeList(_ytVideos);
-        return;
-    }
-    try {
-        // ✅ Direct Firestore — orderBy ছাড়া (composite index লাগবে না)
-        let snap;
-        try {
-            snap = await fbDb.collection(FS.youtube).orderBy('order', 'asc').get();
-        } catch(idxErr) {
-            // orderBy index নেই — simple get() দিয়ে fallback
-            console.warn('[loadYT] orderBy failed, using simple get:', idxErr.message);
-            snap = await fbDb.collection(FS.youtube).get();
-        }
-        if (!snap.empty) {
-            _ytVideos = snap.docs.map(d => ({ id: d.id, _id: d.id, ...d.data() }))
-                .sort((a, b) => (a.order || 0) - (b.order || 0));
-            renderYoutubeList(_ytVideos);
-        } else {
-            _ytVideos = [];
-            renderYoutubeList([], true);
-        }
-    } catch(e) {
-        console.warn('[loadYT] Error:', e.message);
-        if(el) el.innerHTML = '<div class="em"><i class="fas fa-exclamation-triangle" style="opacity:.4"></i><div class="em-t">লোড করতে সমস্যা: ' + (e.message||'') + '</div></div>';
-    }
-}
-
-async function seedDefaultVideos() {
-    if (!fbDb) { toast('Firebase সংযুক্ত নয়!', 'error'); return; }
-    if (!confirm(DEFAULT_YT_VIDEOS.length + 'টি ডিফল্ট ভিডিও Firestore-এ সেভ করবেন?')) return;
-    
-    toast('সেভ হচ্ছে...', 'info');
-    let saved = 0, failed = 0;
-    
-    for (const v of DEFAULT_YT_VIDEOS) {
-        try {
-            const data = {
-                title:   v.title,
-                desc:    v.desc || '',
-                vid:     v.vid || '',
-                chUrl:   v.chUrl || '',
-                level:   v.level || 'beginner',
-                views:   v.views || '0',
-                date:    v.date || '',
-                channel: v.channel || 'AutoScrip',
-                order:   saved * 100,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            await fbDb.collection(FS.youtube).add(data);
-            saved++;
-        } catch(e) {
-            console.error('[Seed] Failed:', v.title, e.message);
-            failed++;
-        }
-    }
-    
-    if (saved > 0) {
-        toast('✅ ' + saved + 'টি ভিডিও সেভ হয়েছে!' + (failed>0?' ('+failed+'টি ব্যর্থ)':''), 'success');
-        await loadYoutubeVideos(); // Reload from Firestore
-    } else {
-        toast('❌ কোনো ভিডিও সেভ হয়নি। Firestore Rules চেক করুন।', 'error');
-    }
-}
-window.seedDefaultVideos = seedDefaultVideos;
-
-function renderYoutubeList(vids, showSeedBanner=false) {
-    const el = document.getElementById('ytVideoList');
-    if (!el) return;
-
-    let html = '';
-
-    // Seed banner
-    if (showSeedBanner) {
-        html += `<div class="cd" style="margin-bottom:16px;border:2px dashed var(--warning);background:rgba(255,170,0,.06);border-radius:10px">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 16px">
-            <div>
-              <div style="font-weight:700;color:var(--warning);font-size:.9rem">⚠️ Firestore-এ কোনো ভিডিও নেই</div>
-              <div style="font-size:.78rem;color:var(--muted);margin-top:3px">ডিফল্ট ভিডিওগুলো দেখাচ্ছে। <strong>Seed</strong> করলে এডিট/ডিলিট করা যাবে।</div>
-            </div>
-            <button class="btn btn-warning btn-sm" onclick="seedDefaultVideos()"><i class="fas fa-cloud-upload-alt"></i> সব Firestore-এ সেভ করুন</button>
-          </div>
-        </div>`;
-    }
-
-    if (!vids || !vids.length) {
-        el.innerHTML = html + '<div class="em" style="padding:40px 0"><i class="fab fa-youtube" style="opacity:.25;font-size:3rem;color:red"></i><div class="em-t" style="margin-top:12px">কোনো ভিডিও নেই — নিচের ফর্ম থেকে যোগ করুন</div></div>';
-        return;
-    }
-
-    const lvlColor = {beginner:'#4caf50',intermediate:'#f59e0b',advanced:'#f44336'};
-    const lvlName  = {beginner:'বিগিনার',intermediate:'ইন্টারমিডিয়েট',advanced:'অ্যাডভান্সড'};
-
-    html += `<div style="display:grid;grid-template-columns:1fr;gap:10px">`;
-    html += vids.map((v, i) => {
-        const ytId = (function(v){ var id=v.vid||''; if(id && !/^[-\w]{11}$/.test(id)){ var m=id.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/); id=m?m[1]:''; } if(!id && v.chUrl){ var m2=v.chUrl.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/); id=m2?m2[1]:''; } return id; })(v);
-        const thumb   = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : '';
-        const isDefault = !!v._isDefault;
-        const vidId   = v.id || v._id || '';
-        const lvlCol  = lvlColor[v.level] || '#888';
-        const lvlLbl  = lvlName[v.level]  || v.level || '';
-
-        return `<div style="display:flex;gap:12px;align-items:center;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;transition:.2s" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
-            <!-- Thumb -->
-            <div style="width:100px;height:58px;border-radius:7px;overflow:hidden;flex-shrink:0;background:#111;display:flex;align-items:center;justify-content:center">
-              ${thumb
-                ? `<img src="${thumb}" style="width:100%;height:100%;object-fit:cover" loading="lazy" onerror="this.parentNode.innerHTML='<i class=\'fab fa-youtube\' style=\'font-size:1.5rem;color:#ff4444;opacity:.5\'></i>'">`
-                : '<i class="fab fa-youtube" style="font-size:1.5rem;color:#ff4444;opacity:.5"></i>'}
-            </div>
-            <!-- Info -->
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:600;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px">
-                ${isDefault ? '<span style="font-size:.65rem;background:#f59e0b;color:#7c2d00;padding:1px 6px;border-radius:3px;margin-right:5px;font-weight:700">DEFAULT</span>' : ''}
-                ${v.title || 'শিরোনাম নেই'}
-              </div>
-              <div style="font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-                <span style="display:inline-flex;align-items:center;gap:3px;background:${lvlCol}22;color:${lvlCol};padding:1px 7px;border-radius:100px;font-weight:600;font-size:.68rem">${lvlLbl}</span>
-                <span><i class="fas fa-eye" style="opacity:.5"></i> ${v.views || '0'}</span>
-                <span><i class="fas fa-clock" style="opacity:.5"></i> ${v.date || ''}</span>
-                ${ytId ? `<span style="font-family:monospace;font-size:.67rem;opacity:.5">ID: ${ytId}</span>` : ''}
-              </div>
-            </div>
-            <!-- Actions -->
-            <div style="display:flex;gap:6px;flex-shrink:0">
-              ${isDefault
-                ? `<button class="btn btn-sm" style="background:var(--primary-dark);color:#fff;font-size:.72rem;padding:5px 10px" onclick="editDefaultVideo('${vidId}',${i})" title="এডিট ও Seed করুন"><i class="fas fa-edit"></i></button>
-                   <button class="btn btn-sm" style="background:rgba(244,67,54,.15);color:#f44336;border:1px solid rgba(244,67,54,.3);font-size:.72rem;padding:5px 10px" onclick="deleteDefaultVideo(${i})" title="সরান"><i class="fas fa-trash"></i></button>`
-                : `<button class="btn btn-sm" style="background:rgba(31,214,176,.08);color:var(--primary);border:1px solid rgba(31,214,176,.25);font-size:.72rem;padding:5px 10px" onclick="editYtVideo('${vidId}')" title="এডিট"><i class="fas fa-edit"></i></button>
-                   ${i>0?`<button class="btn btn-sm" style="background:rgba(31,214,176,.06);color:var(--muted);font-size:.72rem;padding:5px 8px" onclick="reorderYtVideo('${vidId}',-1)" title="উপরে"><i class="fas fa-arrow-up"></i></button>`:''}
-                   <button class="btn btn-sm" style="background:rgba(244,67,54,.15);color:#f44336;border:1px solid rgba(244,67,54,.3);font-size:.72rem;padding:5px 10px" onclick="deleteYtVideo('${vidId}')" title="ডিলিট"><i class="fas fa-trash"></i></button>`
-              }
-            </div>
-          </div>`;
-    }).join('');
-    html += '</div>';
-
-    el.innerHTML = html;
-    // Update count badge
-    const countEl = document.getElementById('ytVidCount');
-    if (countEl) countEl.textContent = vids.length + 'টি ভিডিও';
-}
-
-// Edit a DEFAULT video — populate form and seed it when saved
-function editDefaultVideo(id, idx) {
-    const v = _ytVideos[idx];
-    if (!v) return;
-    // Populate form
-    document.getElementById('ytVidTitle').value = v.title || '';
-    document.getElementById('ytVidDesc').value = v.desc || '';
-    document.getElementById('ytVidId').value = v.vid || '';
-    document.getElementById('ytVidUrl').value = v.chUrl || '';
-    document.getElementById('ytVidViews').value = v.views || '';
-    document.getElementById('ytVidDate').value = v.date || '';
-    document.getElementById('ytVidLevel').value = v.level || 'beginner';
-    // Mark as new (will create in Firestore on save)
-    document.getElementById('editYtId').value = '';
-    document.getElementById('ytFormTitle').textContent = '📝 ডিফল্ট ভিডিও সম্পাদনা (সেভ করলে Firestore-এ যাবে)';
-    document.getElementById('ytVideoForm').scrollIntoView({behavior:'smooth'});
-}
-window.editDefaultVideo = editDefaultVideo;
-
-// Remove a DEFAULT video from the local list
-function deleteDefaultVideo(idx) {
-    if (!confirm('এই ডিফল্ট ভিডিওটি তালিকা থেকে সরাবেন? (Firestore-এ কোনো পরিবর্তন হবে না)')) return;
-    _ytVideos.splice(idx, 1);
-    renderYoutubeList(_ytVideos, _ytVideos.every(v=>v._isDefault));
-    toast('ডিফল্ট ভিডিও তালিকা থেকে সরানো হয়েছে', 'info');
-}
-window.deleteDefaultVideo = deleteDefaultVideo;
-
-function editYtVideo(id) {
-    const v = _ytVideos.find(x => (x.id||x._id) === id);
-    if (!v) return;
-    _editYtId = id;
-    document.getElementById('ytVidTitle').value = v.title || '';
-    document.getElementById('ytVidDesc').value  = v.desc  || '';
-    document.getElementById('ytVidId').value    = v.vid   || '';
-    document.getElementById('ytVidUrl').value   = v.chUrl || '';
-    document.getElementById('ytVidLevel').value = v.level || 'beginner';
-    document.getElementById('ytVidViews').value = v.views || '';
-    document.getElementById('ytVidDate').value  = v.date  || '';
-    document.getElementById('ytFormTitle').textContent = 'ভিডিও এডিট করুন';
-    document.getElementById('ytVideoForm').scrollIntoView({behavior:'smooth'});
-}
-
-function resetYtForm() {
-    _editYtId = null;
-    ['ytVidTitle','ytVidDesc','ytVidId','ytVidUrl','ytVidViews','ytVidDate'].forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.value = '';
-    });
-    const lv = document.getElementById('ytVidLevel');
-    if(lv) lv.value = 'beginner';
-    const ft = document.getElementById('ytFormTitle');
-    if(ft) ft.textContent = 'নতুন ভিডিও যোগ করুন';
-}
-
-async function saveYtVideo() {
-    const title  = document.getElementById('ytVidTitle')?.value.trim();
-    const desc   = document.getElementById('ytVidDesc')?.value.trim();
-    const vid    = document.getElementById('ytVidId')?.value.trim();
-    const chUrl  = document.getElementById('ytVidUrl')?.value.trim();
-    const level  = document.getElementById('ytVidLevel')?.value || 'beginner';
-    const views  = document.getElementById('ytVidViews')?.value.trim();
-    const date   = document.getElementById('ytVidDate')?.value.trim();
-
-    if (!title) { toast('শিরোনাম লিখুন!', 'error'); return; }
-    if (!vid && !chUrl) { toast('YouTube Video ID (যেমন: dQw4w9WgXcQ) অথবা চ্যানেল URL দিন!', 'error'); return; }
-
-    const data = { title, desc, vid, chUrl, level, views, date, channel: 'AutoScrip', id: _editYtId || null };
-
-    try {
-        let result;
-        if (_editYtId) {
-            result = await API.put('/youtube/' + _editYtId, data);
-        } else {
-            result = await API.post('/youtube', data);
-        }
-        if (result.success) {
-            const msg = _editYtId ? '✅ ভিডিও আপডেট হয়েছে!' : '✅ ভিডিও যোগ হয়েছে!';
-            toast(msg, 'success');
-            resetYtForm();
-            // Reload from Firestore to get fresh data
-            await loadYoutubeVideos();
-        } else {
-            toast('সমস্যা: ' + (result.error || 'অজানা এরর'), 'error');
-        }
-    } catch(e) {
-        toast('এরর: ' + e.message, 'error');
-    }
-}
-
-async function deleteYtVideo(id) {
-    const v = (_ytVideos||[]).find(x => (x.id||x._id) === id);
-    const title = v?.title || 'এই ভিডিও';
-    if (!confirm('মুছবেন? "' + title + '"')) return;
-    try {
-        toast('মুছা হচ্ছে...', 'info');
-        const result = await API.delete('/youtube/' + id);
-        if (result.success) {
-            // Remove from local array immediately
-            _ytVideos = (_ytVideos||[]).filter(x => (x.id||x._id) !== id);
-            renderYoutubeList(_ytVideos, _ytVideos.length === 0);
-            toast('🗑️ "' + title + '" মুছে গেছে!', 'success');
-            // Update count
-            const countEl = document.getElementById('ytVidCount');
-            if (countEl) countEl.textContent = _ytVideos.length + 'টি ভিডিও';
-        } else {
-            toast('মুছতে সমস্যা: ' + (result.error||'অজানা'), 'error');
-        }
-    } catch(e) {
-        toast('মুছতে সমস্যা: ' + e.message, 'error');
-    }
-}
-
-async function reorderYtVideo(id, dir) {
-    const idx = _ytVideos.findIndex(v => (v.id||v._id) === id);
-    if (idx < 0) return;
-    const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= _ytVideos.length) return;
-    // Swap order values
-    const a = _ytVideos[idx], b = _ytVideos[newIdx];
-    try {
-        await fbDb.collection(FS.youtube).doc(a.id||a._id).update({ order: newIdx * 100 });
-        await fbDb.collection(FS.youtube).doc(b.id||b._id).update({ order: idx * 100 });
-        toast('ক্রম পরিবর্তিত!', 'success');
-        await loadYoutubeVideos();
-    } catch(e) { toast('এরর: ' + e.message, 'error'); }
-}
-
-// Expose globally
-window.loadYoutubeVideos = loadYoutubeVideos;
-window.saveYtVideo = saveYtVideo;
-window.deleteYtVideo = deleteYtVideo;
-window.editYtVideo = editYtVideo;
-window.resetYtForm = resetYtForm;
-window.reorderYtVideo = reorderYtVideo;
-
-// Wait until fbAuth is initialized, then register listener
-(function waitAndRegisterAuthListener() {
-    if (typeof fbAuth !== 'undefined' && fbAuth) {
-        fbAuth.onAuthStateChanged(async (user) => {
-        if (!user) return; // Not logged in — stay on login screen
-
-        // Multi-layer admin check (same as doLogin)
-        const isAdminEmail = user.email === ADMIN_EMAIL_MASTER;
-        const isMasterUID  = user.uid   === ADMIN_UID_MASTER;
-        let adminData = null;
-        let hasAdminDoc = false;
-
-        try {
-            const doc = await Promise.race([
-                fbDb.collection(FS.admins).doc(user.uid).get(),
-                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
-            ]);
-            if (doc.exists) {
-                adminData = doc.data(); hasAdminDoc = true;
-            } else if (user.email === ADMIN_EMAIL_MASTER || user.uid === ADMIN_UID_MASTER) {
-                try {
-                    const _d = { name: user.displayName || user.email.split('@')[0], email: user.email, role: 'super_admin', uid: user.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
-                    await fbDb.collection(FS.admins).doc(user.uid).set(_d, { merge: true });
-                    adminData = _d; hasAdminDoc = true;
-                } catch(_ce) {}
-            }
-        } catch(e) {
-            console.warn('[AuthState] Firestore read failed — using email/UID fallback');
-        }
-
-        const allowed = isAdminEmail || isMasterUID || hasAdminDoc;
-        if (!allowed) {
-            console.warn('[AuthState] User not admin — signing out');
-            fbAuth.signOut();
-            return;
-        }
-
-        currentUser = {
-            uid:              user.uid,
-            email:            user.email,
-            name:             adminData?.name || user.displayName || user.email.split('@')[0],
-            role:             adminData?.role || 'super_admin',
-            twoFactorEnabled: adminData?.twoFactorEnabled || false
-        };
-        currentUserRole = currentUser.role;
-
-        showApp();
-        // ✅ QUOTA FIX: শুধু dashboard প্রথমে, tools lazy load
-        loadDashboard();
-        // ✅ loadTools() এখানে নয় — tools panel এ গেলেই চলবে (quota বাঁচায়)
-        setTimeout(() => { if(typeof loadCategories==='function') loadCategories(); }, 3000);
-    });
-    } else {
-        setTimeout(waitAndRegisterAuthListener, 200);
-    }
-})();
-
     // Connection status
     await checkConnection();
 });
-
-
 
 // ===== CONNECTION CHECK =====
 async function checkConnection() {
@@ -7301,12 +6884,7 @@ async function doLogin() {
     if (errDiv) errDiv.style.display = 'none';
 
     try {
-        if (!fbAuth) {
-            if (window.__firebaseSDKReady && typeof firebase !== 'undefined' && typeof firebase.auth === 'function') {
-                try { fbAuth = firebase.auth(); fbDb = firebase.firestore(); } catch(_r) {}
-            }
-            if (!fbAuth) throw new Error('Firebase লোড হচ্ছে — অপেক্ষা করুন বা রিফ্রেশ করুন।');
-        }
+        if (!fbAuth) throw new Error('Firebase লোড হচ্ছে — অপেক্ষা করুন বা রিফ্রেশ করুন।');
 
         // Step 1: Firebase Auth sign-in
         const cred = await fbAuth.signInWithEmailAndPassword(email, password);
@@ -7314,11 +6892,8 @@ async function doLogin() {
         console.log('[Login] Auth OK. UID:', user.uid, '| Email:', user.email);
 
         // Step 2: Admin check — multiple fallback layers
-        // Layer A: Admin email match (most reliable — no Firestore needed)
         const isAdminEmail   = user.email === ADMIN_EMAIL_MASTER;
-        // Layer B: UID match (hardcoded)
         const isMasterUID    = user.uid === ADMIN_UID_MASTER;
-        // Layer C: Firestore autoscrip_admins doc
         let adminData = null;
         let hasAdminDoc = false;
         try {
@@ -7329,7 +6904,6 @@ async function doLogin() {
             if (doc.exists) {
                     adminData = doc.data(); hasAdminDoc = true;
                 } else if (isAdminEmail || isMasterUID) {
-                    // Master admin — auto-create doc so Firestore Rules allow access
                     try {
                         const _d = {
                             name:      user.displayName || user.email.split('@')[0],
@@ -7341,14 +6915,13 @@ async function doLogin() {
                         await fbDb.collection(FS.admins).doc(user.uid).set(_d, { merge: true });
                         adminData = _d; hasAdminDoc = true;
                         console.log('[Login] Admin doc auto-created ✅');
-                    } catch(_ce) { /* ignore — will use email/UID fallback */ }
+                    } catch(_ce) { /* ignore */ }
                 }
             console.log('[Login] Firestore admin doc:', hasAdminDoc ? 'FOUND' : 'NOT FOUND');
         } catch(e) {
             console.warn('[Login] Firestore read failed:', e.message, '— using email/UID fallback');
         }
 
-        // Allow if ANY of the layers pass
         const allowed = isAdminEmail || isMasterUID || hasAdminDoc;
         console.log('[Login] Access check →', { isAdminEmail, isMasterUID, hasAdminDoc, allowed });
 
@@ -7372,12 +6945,11 @@ async function doLogin() {
         try { sessionStorage.setItem('adminToken', 'firebase_' + user.uid); } catch(e) {}
         try { sessionStorage.setItem('adminEmail', user.email); } catch(e) {}
 
-        // Step 4: Load dashboard (tools loaded by auth state listener — avoid double load)
+        // Step 4: Load dashboard
         showApp();
         toast('✅ স্বাগতম, ' + currentUser.name + '!', 'success');
 
     } catch(e) {
-        // Firebase Auth error codes
         const MSGS = {
             'auth/user-not-found':         'এই ইমেইল দিয়ে কোনো অ্যাকাউন্ট নেই।',
             'auth/wrong-password':         'পাসওয়ার্ড ভুল। আবার চেষ্টা করুন।',
@@ -7406,11 +6978,6 @@ async function doLogout() {
     document.getElementById('app').style.display         = 'none';
     toast('✅ লগআউট সফল হয়েছে।', 'success');
 }
-
-
-
-
-// ===== MISSING CRITICAL FUNCTIONS (RESTORED) =====
 
 function showLoginError(msg) {
     const errDiv = document.getElementById('loginErr');
@@ -7445,10 +7012,8 @@ function getRoleLabel(role) {
     return roles[role] || role;
 }
 
-// Alias: some call showNotification, map to toast
 function showNotification(msg, type) { toast(msg, type || 'info'); }
 
-// ===== FORGOT PASSWORD =====
 async function forgotPassword() {
     const email = document.getElementById('loginEmail').value.trim();
     if (!email || !AdminSecurity.validateEmail(email)) {
@@ -7468,7 +7033,6 @@ async function forgotPassword() {
     }
 }
 
-
 function togglePasswordVisibility(inputId, icon) {
     const input = document.getElementById(inputId);
     if (input.type === 'password') {
@@ -7482,7 +7046,6 @@ function togglePasswordVisibility(inputId, icon) {
 
 // ===== DASHBOARD FUNCTIONS =====
 async function loadDashboard() {
-    // ✅ CACHE: 2 মিনিটের মধ্যে পুনরায় call করলে skip করো
     const now = Date.now();
     if (window._dashCacheTs && (now - window._dashCacheTs) < 120000) return;
     window._dashCacheTs = now;
@@ -7614,7 +7177,6 @@ async function migrateLocalTools() {
                 }
             }
         }
-        // Deduplicate
         const seen = new Set();
         lsTools = lsTools.filter(t => {
             const key = t._id || t.id || t.title || t.name;
@@ -7630,13 +7192,10 @@ async function migrateLocalTools() {
     const totalCount = lsTools.length;
     if (btn) { btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> 0/${totalCount} আপলোড হচ্ছে...`; btn.disabled = true; }
 
-    // ── Firestore REST API ব্যবহার করি — WebChannel timeout এড়াতে ──
-    // Batch size: ৫টি করে, প্রতিটির মাঝে ৩০০ms বিরতি
     const PROJECT = 'powerscript-pro-web';
     const DB = '(default)';
     const COLLECTION = 'autoscrip_tools';
     
-    // Get auth token
     let authToken = null;
     try {
         const user = fbAuth.currentUser;
@@ -7671,10 +7230,8 @@ async function migrateLocalTools() {
                 migratedAt:  new Date().toISOString(),
             };
 
-            // Firestore REST API — timeout নেই, সরাসরি HTTP
             const url = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/${DB}/documents/${COLLECTION}`;
             
-            // Firestore value format এ convert করি
             function toFirestoreValue(val) {
                 if (val === null || val === undefined) return { nullValue: null };
                 if (typeof val === 'boolean') return { booleanValue: val };
@@ -7696,7 +7253,7 @@ async function migrateLocalTools() {
             if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
 
             const ctrl = new AbortController();
-            const tid = setTimeout(() => ctrl.abort(), 15000); // 15s timeout per tool
+            const tid = setTimeout(() => ctrl.abort(), 15000);
 
             const res = await fetch(url, {
                 method: 'POST',
@@ -7723,10 +7280,8 @@ async function migrateLocalTools() {
             failed++;
         }
 
-        // Progress update
         if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${success+failed}/${totalCount} আপলোড হচ্ছে...`;
 
-        // প্রতি BATCH_SIZE টার পর একটু বিরতি নাও
         if ((i + 1) % BATCH_SIZE === 0 && i < lsTools.length - 1) {
             await new Promise(r => setTimeout(r, 500));
         }
@@ -7751,9 +7306,7 @@ async function migrateLocalTools() {
 }
 window.migrateLocalTools = migrateLocalTools;
 
-
 function showFirestoreSetupGuide() {
-    // ✅ FIX: 3 seconds পরে দেখাও — Firebase init এর সময় দাও
     if (window._firebaseInitOK) {
         _showGuideNow();
     } else {
@@ -7803,8 +7356,6 @@ function _showGuideNow() {
     </div>`;
 }
 
-
-
 // ===== REAL RATE LIMIT TRACKING =====
 const RateLimitTracker = {
   _calls: [],
@@ -7850,7 +7401,6 @@ async function loadTools(forceRefresh = false) {
   }
 
   try {
-    // ✅ FIX: collection.get() এর পরিবর্তে query ব্যবহার করুন
     const toolsArray = [];
     const snap = await fbDb.collection('autoscrip_tools').get();
 
@@ -7863,7 +7413,6 @@ async function loadTools(forceRefresh = false) {
       console.log('[loadTools] Loaded', allTools.length, 'tools from Firestore');
       window._toolsCacheTs = Date.now();
     } else {
-      // localStorage fallback
       const localTools = JSON.parse(localStorage.getItem('autoscrip_tools') || '[]');
       if (localTools.length) {
         allTools = localTools;
@@ -7877,7 +7426,6 @@ async function loadTools(forceRefresh = false) {
 
   } catch (error) {
     console.error('[loadTools] Error:', error);
-    // localStorage fallback
     const localTools = JSON.parse(localStorage.getItem('autoscrip_tools') || '[]');
     if (localTools.length) {
       allTools = localTools;
@@ -8022,7 +7570,6 @@ async function bulkUpdate(updates) {
     safeUpdates.updatedAt = new Date().toISOString();
     if ('published' in safeUpdates) safeUpdates.status = safeUpdates.published ? 'approved' : 'pending';
     try {
-        // Firestore batch (max 500 per batch)
         const BATCH_SIZE = 450;
         for (let i = 0; i < selectedTools.length; i += BATCH_SIZE) {
             const batch = fbDb.batch();
@@ -8031,7 +7578,6 @@ async function bulkUpdate(updates) {
             });
             await batch.commit();
         }
-        // Update in-memory
         allTools = allTools.map(t => selectedTools.includes(t.id||t._id) ? {...t, ...safeUpdates} : t);
         toast(`✅ ${selectedTools.length}টি টুল আপডেট হয়েছে!`, 'success');
         clearSelection();
@@ -8111,7 +7657,6 @@ async function saveTool(preview = false) {
     
     const commands = cmdManager ? cmdManager.getBlocksData() : [];
     
-    // Validation
     if (!title) {
         toast('শিরোনাম লিখুন!', 'error');
         document.getElementById('toolTitle').focus();
@@ -8129,7 +7674,6 @@ async function saveTool(preview = false) {
         return;
     }
     
-    // Auto-test before save
     const testResult = await testCommands(commands);
     if (!testResult.success) {
         if (!confirm(`টেস্ট Failed: ${testResult.error}\n\nতারপরও সেভ করবেন?`)) {
@@ -8144,16 +7688,15 @@ async function saveTool(preview = false) {
     btn.disabled = true;
     
     try {
-        // Get subcategory if selected
         const subcategoryEl = document.getElementById('toolSubcat');
         const subcategory = subcategoryEl ? subcategoryEl.value : '';
 
         const toolData = {
             title,
-            name: title,        // user.html compatibility
+            name: title,
             category,
-            subcategory: subcategory || '',  // ✅ subcategory সেভ হবে
-            subCategory: subcategory || '',  // user.html camelCase compatibility
+            subcategory: subcategory || '',
+            subCategory: subcategory || '',
             description,
             author,
             tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
@@ -8169,24 +7712,21 @@ async function saveTool(preview = false) {
             updatedAt: new Date().toISOString()
         };
 
-        // ✅ Direct Firestore — কোনো backend দরকার নেই
         if (!fbDb) { toast('Firebase সংযুক্ত নয়', 'error'); return; }
 
-        // ── Duplicate Check (skip for edits) ──────────────────────────
         if (!editId && window.checkDuplicateBeforeSave) {
             const dupResult = await window.checkDuplicateBeforeSave(
                 { title, commands, tags: toolData.tags },
-                null  // no excludeId for new tools
+                null
             );
             if (!dupResult.allowed) {
                 btn.innerHTML = '<i class="fas fa-save"></i> সেভ করুন';
                 btn.disabled = false;
-                return; // user cancelled — abort save
+                return;
             }
         }
         if (editId) {
             await fbDb.collection('autoscrip_tools').doc(editId).update(toolData);
-            // Update in-memory
             const idx = allTools.findIndex(t => (t.id||t._id) === editId);
             if (idx >= 0) allTools[idx] = { ...allTools[idx], ...toolData, id: editId, _id: editId };
             toast(`✅ "${title}" আপডেট হয়েছে!`, 'success');
@@ -8200,15 +7740,13 @@ async function saveTool(preview = false) {
         }
 
         if (preview) window.open('/user.html', '_blank');
-        // ✅ Notify user.html to refresh tools
         try { var _ch = new BroadcastChannel('autoscrip_sync'); _ch.postMessage({ type: 'tools_updated', action: editId ? 'update' : 'add' }); _ch.close(); } catch(_) {}
         showP('tools');
         renderToolsTable(allTools);
-        window._toolsCacheTs = 0; // invalidate cache so next loadTools() refreshes
+        window._toolsCacheTs = 0;
         loadDashboard();
     } catch (error) {
         console.error('[saveTool] Firestore error:', error.code, error.message);
-        // ✅ localStorage fallback — Firestore fail হলেও টুল হারাবে না
         try {
             var _lsTools = JSON.parse(localStorage.getItem('autoscrip_tools_backup') || '[]');
             var _backupTool = { ...toolData, id: editId || ('local_' + Date.now()), _id: editId || ('local_' + Date.now()), _localOnly: true, savedAt: new Date().toISOString() };
@@ -8224,7 +7762,6 @@ async function saveTool(preview = false) {
         
         if (error.code === 'permission-denied') {
             toast('⚠️ Firestore Permission Denied — টুল localStorage এ সেভ হয়েছে। Firestore Rules ঠিক করলে auto-sync হবে।', 'warning');
-            // Still update UI
             if (!editId) { allTools.unshift({ ...toolData, id: 'local_' + Date.now(), _localOnly: true }); }
             renderToolsTable(allTools);
             showP('tools');
@@ -8247,21 +7784,14 @@ async function saveTool(preview = false) {
 async function editTool(id) {
     try {
         let tool = null;
-        // Try Firestore directly first
         if (fbDb) {
             try {
                 const doc = await fbDb.collection('autoscrip_tools').doc(id).get();
                 if (doc.exists) tool = { id: doc.id, _id: doc.id, ...doc.data() };
             } catch(fe) { console.warn('[editTool] Firestore read failed:', fe.message); }
         }
-        // Fallback to in-memory allTools
         if (!tool) {
             tool = allTools.find(t => (t.id || t._id) === id);
-        }
-        // Fallback to API
-        if (!tool) {
-            const result = await API.get(`/tools/${id}`);
-            if (result.success && result.tool) tool = result.tool;
         }
         if (!tool) {
             toast('টুল পাওয়া যায়নি', 'error');
@@ -8315,9 +7845,8 @@ async function deleteTool(id) {
         toast('🗑️ টুল ডিলিট হয়েছে!', 'success');
         allTools = allTools.filter(t => (t.id||t._id) !== id);
         renderToolsTable(allTools);
-        // ✅ Broadcast delete to user.html
         try { var ch = new BroadcastChannel('autoscrip_sync'); ch.postMessage({ type: 'tools_updated', action: 'delete', toolId: id }); ch.close(); } catch(_) {}
-        window._toolsCacheTs = 0; // invalidate cache
+        window._toolsCacheTs = 0;
         await loadDashboard();
     } catch (error) {
         console.error('[deleteTool]', error.code, error.message);
@@ -8332,15 +7861,12 @@ async function deleteTool(id) {
 
 async function toggleToolField(id, field, value) {
     if (!fbDb) { toast('Firebase সংযুক্ত নয়', 'error'); return; }
-    // Only allow safe fields
     const allowedFields = ['published', 'featured', 'verified', 'status'];
     if (!allowedFields.includes(field)) return;
     try {
         const updates = { [field]: value, updatedAt: new Date().toISOString() };
-        // published toggle → status sync
         if (field === 'published') updates.status = value ? 'approved' : 'pending';
         await fbDb.collection('autoscrip_tools').doc(id).update(updates);
-        // Update in-memory
         const t = allTools.find(t => (t.id||t._id) === id);
         if (t) Object.assign(t, updates);
         toast(`✅ ${field === 'published' ? (value ? 'প্রকাশিত' : 'অপ্রকাশিত') : field + ' আপডেট'} হয়েছে!`, 'success');
@@ -8434,7 +7960,7 @@ async function testCurrentTool() {
     if (result.success) {
         toast('✅ টুল টেস্ট পাস করেছে!', 'success');
         if (result.output) {
-                    }
+                }
     } else {
         toast(`❌ টেস্ট failed: ${result.error}`, 'error');
     }
@@ -8511,7 +8037,6 @@ async function uploadFile(file) {
     
     toast('🔄 ইমেজ প্রক্রিয়া হচ্ছে...', 'info');
     
-    // Try Cloudinary if configured, else use base64
     const isCloudinaryConfigured = CONFIG.CLOUDINARY_URL && !CONFIG.CLOUDINARY_URL.includes('your-cloud');
     
     if (isCloudinaryConfigured) {
@@ -8530,10 +8055,8 @@ async function uploadFile(file) {
         } catch(e) {}
     }
     
-    // Fallback: Convert to base64 DataURL (works offline)
     const reader = new FileReader();
     reader.onload = (e) => {
-        // Compress image to reasonable size
         const img = new Image();
         img.onload = () => {
             const canvas = document.createElement('canvas');
@@ -8890,7 +8413,7 @@ async function deleteCom(id) {
     }
 }
 
-// ===== NOTIFICATION FUNCTIONS (Firebase-powered, replaces old REST API calls) =====
+// ===== NOTIFICATION FUNCTIONS =====
 async function sendNotif() {
     const target = document.getElementById('ntTarget')?.value || 'all';
     const icon   = document.getElementById('ntIcon')?.value   || '🔔';
@@ -8988,7 +8511,6 @@ async function clearNotifs() {
     }
 }
 
-// ── Subscriber management (new functions) ─────────────────────
 async function loadSubscriberStats() {
     const tbody = document.getElementById('subscriberTableBody');
     const cntEl = document.getElementById('subscriberCount');
@@ -9069,8 +8591,6 @@ async function removeSubscriber(subscriberId) {
     } catch(e) { toast('সমস্যা: ' + e.message, 'error'); }
 }
 
-
-
 // ===== ANALYTICS FUNCTIONS =====
 async function loadAnalytics() {
     try {
@@ -9084,7 +8604,6 @@ async function loadAnalytics() {
 }
 
 function renderAnalyticsCharts(data) {
-    // Chart 1
     const c1 = document.getElementById('anChart1');
     if (c1 && data.tools) {
         new Chart(c1, {
@@ -9112,7 +8631,6 @@ function renderAnalyticsCharts(data) {
         });
     }
     
-    // Chart 2
     const c2 = document.getElementById('anChart2');
     if (c2 && data.categories) {
         new Chart(c2, {
@@ -9198,12 +8716,10 @@ function renderHeatmap(data) {
     let html = '';
     const days = ['সোম', 'মঙ্গল', 'বুধ', 'বৃহস্পতি', 'শুক্র', 'শনি', 'রবি'];
     
-    // Add day labels
     days.forEach(day => {
         html += `<div class="heatmap-label">${day}</div>`;
     });
     
-    // Generate 7x7 heatmap grid
     for (let i = 0; i < 49; i++) {
         const value = data[i] || Math.floor(Math.random() * 100);
         const color = `rgba(31,214,176, ${value/100})`;
@@ -9500,7 +9016,7 @@ function showPreview() {
     if (!container) return;
     
     container.innerHTML = `
-        <tr><th>শিরোনাম</th><th>ক্যাটাগরি</th><th>স্ট্যাটাস</th></tr>
+        <table><th>শিরোনাম</th><th>ক্যাটাগরি</th><th>স্ট্যাটাস</th></tr>
         <tr><td>সিস্টেম ইনফো</td><td>system</td><td><span class="bdg-g">✅</span></td></tr>
         <tr><td>নেটওয়ার্ক স্ক্যান</td><td>network</td><td><span class="bdg-g">✅</span></td></tr>
         <tr><td>ডিস্ক ক্লিনআপ</td><td>system</td><td><span class="bdg-w">⚠️</span></td></tr>
@@ -9555,7 +9071,7 @@ async function loadSettings() {
             chk('stRunEnabled',      s.runEnabled !== false);
             chk('stCommunityEnabled',s.communityEnabled !== false);
         }
-    } catch (error) { /* offline fallback */ }
+    } catch (error) { }
 
     try { loadNotifHistory(); } catch(e) {}
     try { loadActivityLog(); } catch(e) {}
@@ -9645,7 +9161,6 @@ async function changePwd() {
     }
 }
 
-// Monitor password strength
 document.getElementById('newPwd')?.addEventListener('input', function(e) {
     const strength = AdminSecurity.checkPasswordStrength(e.target.value);
     const bar = document.getElementById('passwordStrength');
@@ -9792,7 +9307,6 @@ async function clearLog() {
 function showP(page) {
     document.querySelectorAll('.pnl').forEach(p => p.classList.remove('active'));
     document.getElementById('pnl-' + page)?.classList.add('active');
-    // Load data for specific panels
     if (page === 'notifs') {
         try { loadNotifHistory(); } catch(e) {}
         try { loadSubscriberStats(); } catch(e) {}
@@ -9849,12 +9363,11 @@ function startClock() {
 
 let _syncDebounce = null;
 function syncNow() {
-    // ✅ Debounce: 5 সেকেন্ডের মধ্যে দুইবার click করলে একটাই কাজ করবে
     if (_syncDebounce) { toast('⏳ সিঙ্ক চলছে...', 'info'); return; }
     _syncDebounce = setTimeout(() => { _syncDebounce = null; }, 5000);
     checkConnection();
     loadDashboard();
-    loadTools(true); // ✅ forceRefresh=true — সিঙ্ক বাটনে সত্যিকারের refresh
+    loadTools(true);
     toast('🔄 ডেটা সিঙ্ক হয়েছে!', 'info');
 }
 
@@ -10092,7 +9605,6 @@ async function seedDefaultCats() {
     let added = 0, skipped = 0;
     for (const cat of defaults) {
         try {
-            // Check if key already exists
             const snap = await fbDb.collection(FS.categories).where('key','==',cat.key).get();
             if (!snap.empty) { skipped++; continue; }
             await fbDb.collection(FS.categories).add({
@@ -10109,9 +9621,7 @@ async function seedDefaultCats() {
     loadCategories();
 }
 
-
-// ===== BUILTIN SUB-CATEGORY MANAGER =====
-let _biSubData = {}; // cache: key → {docId, subCategories[]}
+let _biSubData = {};
 
 async function openBuiltinSubModal(key, name, emoji) {
   document.getElementById('biSubModal').style.display = 'flex';
@@ -10121,7 +9631,6 @@ async function openBuiltinSubModal(key, name, emoji) {
   document.getElementById('biSubName').value = '';
   document.getElementById('biSubKey').value = '';
 
-  // Load existing subs from Firestore
   const existing = document.getElementById('biSubExisting');
   existing.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted)"><i class="fas fa-spinner fa-spin"></i></div>';
   try {
@@ -10200,7 +9709,6 @@ async function saveBuiltinSub() {
     document.getElementById('biSubName').value = '';
     document.getElementById('biSubKey').value = '';
     renderBiSubExisting(key, document.getElementById('biSubExisting'));
-    // Update badge in builtin list
     renderBuiltinSubBadges(key, newSubs);
     loadCategories();
   } catch(e) {
@@ -10241,7 +9749,6 @@ function renderBuiltinSubBadges(key, subs) {
   ).join('');
 }
 
-// Load builtin sub-badges on page load
 async function loadBuiltinSubBadges() {
   try {
     const snap = await fbDb.collection(FS.categories).where('isBuiltin','==',true).get();
@@ -10512,7 +10019,6 @@ setTimeout(() => {
 
 // ===== KEYBOARD SHORTCUTS =====
 document.addEventListener('keydown', (e) => {
-    // Ctrl+S to save tool
     if (e.ctrlKey && e.key === 's') {
         e.preventDefault();
         if (document.getElementById('pnl-add-tool').classList.contains('active')) {
@@ -10520,14 +10026,12 @@ document.addEventListener('keydown', (e) => {
         }
     }
     
-    // Ctrl+F to focus search
     if (e.ctrlKey && e.key === 'f') {
         e.preventDefault();
         const search = document.querySelector('.tw-srch input');
         if (search) search.focus();
     }
     
-    // Escape to close modals
     if (e.key === 'Escape') {
         document.querySelectorAll('.mo.active').forEach(modal => {
             modal.classList.remove('active');
@@ -10561,9 +10065,6 @@ window.addEventListener('unhandledrejection', (e) => {
         if (typeof toast === 'function') toast('একটি ত্রুটি ঘটেছে!', 'error');
 });
 
-// ===== SERVICE WORKER FOR PWA =====
-// sw.js is not included — skipping registration to avoid 404 errors
-
 // ===== OFFLINE DETECTION =====
 window.addEventListener('offline', () => {
     updateConnectionStatus('disconnected');
@@ -10577,8 +10078,6 @@ window.addEventListener('online', () => {
         syncNow();
     }
 });
-
-// ===== APP VERSION =====
 
 // ===== EXPOSE TO WINDOW =====
 window.showP = showP;
@@ -10692,7 +10191,6 @@ function closeMobileMenu() {
     sb && sb.classList.remove('mobile-open');
     overlay && overlay.classList.remove('active');
 }
-// Close menu on nav link click (mobile)
 document.addEventListener('DOMContentLoaded', () => {
     if (window.innerWidth <= 768) {
         document.querySelectorAll('.sb-lnk').forEach(btn => {
@@ -10700,9 +10198,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
-
-
 
 // ===== GDPR COOKIE CONSENT =====
 const GDPR = {
@@ -10743,7 +10238,7 @@ const GDPR = {
   }
 };
 
-// ===== ARIA LIVE ANNOUNCER (Screen Reader) =====
+// ===== ARIA LIVE ANNOUNCER =====
 const Announcer = {
   _el: null,
   init() {
@@ -10796,19 +10291,15 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-
-
 // ===== SESSION START + ENTERPRISE INIT =====
 document.addEventListener('DOMContentLoaded', function() {
   try { GDPR.init(); } catch(e) {}
   try { Announcer.init(); } catch(e) {}
   try { TabSync.init(); } catch(e) {}
-  // Load notification history on startup
   setTimeout(function() {
     try { loadNotifHistory(); } catch(e) {}
     try { loadSubscriberStats(); } catch(e) {}
   }, 2000);
-  // Broadcast tools changes to user tab
   var _origSave = window.saveTool;
   if (typeof _origSave === 'function') {
     window.saveTool = function() {
@@ -10819,34 +10310,54 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ── Firestore Rules Help ──────────────────────────────────────
+// ===== FIRESTORE RULES HELP =====
 window.showFirestoreRulesHelp = function() {
   const modal = document.getElementById('firestoreRulesModal');
   if (modal) { modal.style.display = 'flex'; }
 };
 
+// ===== SYNC FROM ADMIN (for user tab) =====
+if (typeof window.syncFromAdmin !== 'function') {
+    window.syncFromAdmin = function(reason) {
+        try {
+            var ch = new BroadcastChannel('autoscrip_sync');
+            ch.postMessage({ type: 'tools_updated', reason: reason || 'admin_action', ts: Date.now() });
+            ch.close();
+        } catch(e) {}
+    };
+}
 
-
-
-
-
+// ===== AUTO SYNC LOCAL BACKUP =====
+async function syncLocalBackupToFirestore() {
+    if (!fbDb || !fbAuth || !fbAuth.currentUser) return;
+    try {
+        var backup = JSON.parse(localStorage.getItem('autoscrip_tools_backup') || '[]');
+        if (!backup.length) return;
+        console.log('[AutoSync] Found', backup.length, 'local backup tools — syncing to Firestore...');
+        var synced = 0;
+        for (var i = 0; i < backup.length; i++) {
+            var tool = backup[i];
+            if (!tool._localOnly) continue;
+            try {
+                var data = Object.assign({}, tool);
+                delete data.id; delete data._id; delete data._localOnly; delete data.savedAt;
+                data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                data.syncedFromBackup = true;
+                await fbDb.collection('autoscrip_tools').add(data);
+                synced++;
+                backup.splice(i, 1); i--;
+            } catch(e) {
+                if (e.code === 'resource-exhausted' || e.code === 'permission-denied') break;
+            }
+        }
+        localStorage.setItem('autoscrip_tools_backup', JSON.stringify(backup));
+        if (synced > 0) {
+            toast('✅ ' + synced + 'টি ব্যাকআপ টুল Firestore এ সিঙ্ক হয়েছে!', 'success');
+            window._toolsCacheTs = 0;
+            loadTools(true);
+        }
+    } catch(e) { console.warn('[AutoSync]', e.message); }
+}
 
 </script>
 
@@ -10879,7 +10390,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return request.auth != null &amp;&amp; (
-        request.auth.token.email == '<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="08657a6a69666f64696f6f6f696561666f486f65696164266b6765">[email&#160;protected]</a>' ||
+        request.auth.token.email == 'mrbanglagggaming@gmail.com' ||
         request.auth.uid == '9doS49dpnZRzrOaOg25VH7bkDlf1' ||
         exists(/databases/$(database)/documents/autoscrip_admins/$(request.auth.uid))
       );
@@ -10943,13 +10454,8 @@ service cloud.firestore {
   </div>
 </div>
 
-<!-- Vercel Web Analytics -->
+<!-- DEFAULT SUB-CATEGORIES -->
 <script>
-window.va = window.va || function() { (window.va.q = window.va.q || []).push(arguments); };
-</script>
-<!-- Vercel analytics disabled --><script>
-
-// ═══ DEFAULT SUB-CATEGORIES FOR BUILT-IN CATEGORIES ═══
 var DEFAULT_ADMIN_SUBCATS = {
   system: [
     {emoji:'💻',name:'সিস্টেম ইনফো',key:'sys_info'},
@@ -11073,7 +10579,6 @@ var DEFAULT_ADMIN_SUBCATS = {
   ]
 };
 
-// Add sub-category select to tool form category dropdown
 (function addSubCatOptions() {
   var sel = document.getElementById('toolCat');
   if (!sel) return;
@@ -11083,7 +10588,6 @@ var DEFAULT_ADMIN_SUBCATS = {
       var o = document.createElement('option');
       o.value = sub.key;
       o.textContent = '  └ ' + sub.emoji + ' ' + sub.name;
-      // Insert after parent option
       var parentOpt = sel.querySelector('option[value="' + parentKey + '"]');
       if (parentOpt && parentOpt.nextSibling) {
         sel.insertBefore(o, parentOpt.nextSibling);
@@ -11094,59 +10598,38 @@ var DEFAULT_ADMIN_SUBCATS = {
   });
 })();
 
-
-// ── SUBCATEGORY DYNAMIC POPULATE ──────────────────────────────────────────
 (function initSubcatSelect() {
-  var SUBCATS = {
-    system:     [{v:'sys_info',l:'💻 সিস্টেম ইনফো'},{v:'sys_power',l:'⚡ পাওয়ার'},{v:'sys_registry',l:'🔧 রেজিস্ট্রি'},{v:'sys_software',l:'📦 সফটওয়্যার'},{v:'sys_display',l:'🖥️ ডিসপ্লে'},{v:'sys_memory',l:'💾 মেমরি'},{v:'sys_audio',l:'🔊 অডিও'},{v:'sys_battery',l:'🔋 ব্যাটারি'},{v:'sys_log',l:'📝 লগ ম্যানেজ'},{v:'sys_cleanup',l:'🧹 ক্লিনআপ'}],
-    network:    [{v:'net_dns',l:'🌍 DNS'},{v:'net_wifi',l:'📡 WiFi'},{v:'net_ethernet',l:'🔌 ইথারনেট'},{v:'net_firewall',l:'🛡️ ফায়ারওয়াল'},{v:'net_bandwidth',l:'📊 ব্যান্ডউইথ'},{v:'net_port',l:'🔍 পোর্ট স্ক্যান'},{v:'net_vpn',l:'🌐 VPN'},{v:'net_signal',l:'📶 সিগন্যাল'},{v:'net_ping',l:'🌊 পিং'},{v:'net_trace',l:'🗺️ ট্রেসরাউট'}],
-    security:   [{v:'sec_encrypt',l:'🔒 এনক্রিপশন'},{v:'sec_antivirus',l:'🛡️ অ্যান্টিভাইরাস'},{v:'sec_password',l:'🔑 পাসওয়ার্ড'},{v:'sec_audit',l:'👁️ অডিট লগ'},{v:'sec_blocking',l:'🚫 ব্লকিং'},{v:'sec_policy',l:'📜 পলিসি'},{v:'sec_scanning',l:'🔍 স্ক্যানিং'},{v:'sec_loganalysis',l:'📊 লগ অ্যানালাইসিস'},{v:'sec_mfa',l:'🔐 MFA'},{v:'sec_vuln',l:'⚠️ ভালনারেবিলিটি'}],
-    backup:     [{v:'bak_full',l:'💾 ফুল ব্যাকআপ'},{v:'bak_file',l:'📂 ফাইল ব্যাকআপ'},{v:'bak_database',l:'🗄️ ডেটাবেস'},{v:'bak_cloud',l:'☁️ ক্লাউড'},{v:'bak_disk',l:'📀 ডিস্ক ইমেজ'},{v:'bak_incremental',l:'🔄 ইনক্রিমেন্টাল'},{v:'bak_encrypted',l:'🔐 এনক্রিপ্টেড'},{v:'bak_scheduled',l:'⏰ শিডিউলড'},{v:'bak_restore',l:'🔁 রিস্টোর'},{v:'bak_sync',l:'🔗 সিঙ্ক'}],
-    monitoring: [{v:'mon_cpu',l:'📊 CPU'},{v:'mon_ram',l:'💾 RAM'},{v:'mon_disk',l:'💿 ডিস্ক'},{v:'mon_network',l:'🌐 নেটওয়ার্ক'},{v:'mon_performance',l:'📈 পারফরম্যান্স'},{v:'mon_alert',l:'🔔 অ্যালার্ট'},{v:'mon_eventlog',l:'📝 ইভেন্ট লগ'},{v:'mon_server',l:'🖥️ সার্ভার'},{v:'mon_uptime',l:'⏱️ আপটাইম'},{v:'mon_hardware',l:'🌡️ হার্ডওয়্যার'}],
-    automation: [{v:'auto_scheduler',l:'🤖 শিডিউলার'},{v:'auto_script',l:'📜 স্ক্রিপ্ট'},{v:'auto_workflow',l:'🔄 ওয়ার্কফ্লো'},{v:'auto_email',l:'📧 ইমেইল'},{v:'auto_file',l:'📂 ফাইল'},{v:'auto_web',l:'🌐 ওয়েব'},{v:'auto_report',l:'📊 রিপোর্ট'},{v:'auto_security',l:'🔐 সিকিউরিটি'},{v:'auto_notification',l:'🔔 নোটিফিকেশন'},{v:'auto_cleanup',l:'🗑️ ক্লিনআপ'}],
-    download:   [{v:'dl_software',l:'⬇️ সফটওয়্যার'},{v:'dl_update',l:'🔄 আপডেট'},{v:'dl_package',l:'📦 প্যাকেজ'},{v:'dl_web',l:'🌐 ওয়েব ফাইল'},{v:'dl_github',l:'🐙 GitHub'},{v:'dl_cloud',l:'☁️ ক্লাউড'},{v:'dl_game',l:'🎮 গেম'},{v:'dl_driver',l:'🔧 ড্রাইভার'},{v:'dl_doc',l:'📄 ডকুমেন্ট'},{v:'dl_media',l:'🎵 মিডিয়া'}],
-    devtools:   [{v:'dev_editor',l:'💻 কোড এডিটর'},{v:'dev_git',l:'🐙 Git'},{v:'dev_docker',l:'🐳 Docker'},{v:'dev_python',l:'🐍 Python'},{v:'dev_node',l:'⚙️ Node.js'},{v:'dev_build',l:'🔧 বিল্ড'},{v:'dev_testing',l:'🧪 টেস্টিং'},{v:'dev_debug',l:'📊 ডিবাগিং'},{v:'dev_deploy',l:'☁️ ডেপ্লয়'},{v:'dev_api',l:'📡 API'}],
-    office:     [{v:'off_word',l:'📝 Word'},{v:'off_excel',l:'📊 Excel'},{v:'off_outlook',l:'📧 Outlook'},{v:'off_teams',l:'👥 Teams'},{v:'off_sharepoint',l:'💼 SharePoint'},{v:'off_onedrive',l:'📂 OneDrive'},{v:'off_print',l:'🖨️ প্রিন্ট'},{v:'off_calendar',l:'📅 ক্যালেন্ডার'},{v:'off_license',l:'🔑 লাইসেন্স'},{v:'off_policy',l:'📋 পলিসি'}],
-    gaming:     [{v:'gam_optimize',l:'🎮 অপটিমাইজ'},{v:'gam_gpu',l:'🖥️ GPU'},{v:'gam_fps',l:'📊 FPS বুস্ট'},{v:'gam_audio',l:'🎵 অডিও'},{v:'gam_controller',l:'🔌 কন্ট্রোলার'},{v:'gam_backup',l:'💾 ব্যাকআপ'},{v:'gam_network',l:'🌐 নেটওয়ার্ক'},{v:'gam_anticheat',l:'🛡️ অ্যান্টিচিট'},{v:'gam_install',l:'📦 ইনস্টল'},{v:'gam_mod',l:'🔧 মড'}]
-  };
-
   function updateSubcatSelect(cat) {
     var grp = document.getElementById('subcatFormGroup');
     var sel = document.getElementById('toolSubcat');
     if (!grp || !sel) return;
-    var subs = SUBCATS[cat] || [];
+    var subs = DEFAULT_ADMIN_SUBCATS[cat] || [];
     if (!subs.length) { grp.style.display = 'none'; sel.value = ''; return; }
     grp.style.display = 'block';
     sel.innerHTML = '<option value="">— সাব-ক্যাটাগরি (ঐচ্ছিক) —</option>';
     subs.forEach(function(s) {
       var o = document.createElement('option');
-      o.value = s.v; o.textContent = s.l;
+      o.value = s.key; o.textContent = s.emoji + ' ' + s.name;
       sel.appendChild(o);
     });
   }
 
-  // Inject subcategory select after toolCat select
   document.addEventListener('DOMContentLoaded', function() {
     var catSel = document.getElementById('toolCat');
     if (!catSel) return;
-    // Create subcategory group
     var grp = document.createElement('div');
     grp.id = 'subcatFormGroup';
     grp.style.cssText = 'display:none;margin-bottom:14px';
     grp.innerHTML = '<label style="display:block;font-family:var(--font-head,sans-serif);font-size:.8rem;color:var(--text-muted,#888);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">সাব-ক্যাটাগরি</label><select id="toolSubcat" class="fc" style="width:100%"><option value="">— বেছে নিন —</option></select>';
     catSel.parentNode.insertBefore(grp, catSel.nextSibling);
-    // Listen for category change
     catSel.addEventListener('change', function() { updateSubcatSelect(this.value); });
-    // Patch editTool to restore subcategory
     var _origEditTool = window.editTool;
     if (typeof _origEditTool === 'function') {
       window.editTool = async function(id) {
         await _origEditTool(id);
-        // After editTool loads data, restore subcategory
         setTimeout(function() {
           var cat = catSel.value;
           if (cat) updateSubcatSelect(cat);
-          // Try to restore subcategory value from allTools
           var tool = allTools.find(function(t){ return (t.id||t._id) === id; });
           if (tool && tool.subcategory) {
             var subcatSel = document.getElementById('toolSubcat');
@@ -11155,146 +10638,60 @@ var DEFAULT_ADMIN_SUBCATS = {
         }, 100);
       };
     }
-    // Also update on page load if editing
     updateSubcatSelect(catSel.value);
   });
-
-
-// ✅ FIX: syncFromAdmin — user tab কে sync notify করে
-if (typeof window.syncFromAdmin !== 'function') {
-    window.syncFromAdmin = function(reason) {
-        try {
-            var ch = new BroadcastChannel('autoscrip_sync');
-            ch.postMessage({ type: 'tools_updated', reason: reason || 'admin_action', ts: Date.now() });
-            ch.close();
-        } catch(e) {}
-    };
-}
-
-// ✅ FIX: getCategoryLabel early guard
-if (typeof window.getCategoryLabel !== 'function') {
-    window.getCategoryLabel = function(cat) {
-        var labels = {
-            system:'⚙️ সিস্টেম', network:'🌐 নেটওয়ার্ক', security:'🔒 সিকিউরিটি',
-            backup:'💾 ব্যাকআপ', monitoring:'📊 মনিটরিং', automation:'🤖 অটোমেশন',
-            download:'⬇️ ডাউনলোড', devtools:'💻 ডেভটুলস', office:'📝 অফিস',
-            gaming:'🎮 গেমিং', files:'📁 ফাইল', windows:'🪟 উইন্ডোজ', other:'📜 অন্যান্য'
-        };
-        return labels[cat] || cat || '📜 অন্যান্য';
-    };
-}
-
-
-// ✅ FIX: Tool Window Copy Functions (admin context — uses allTools)
-if (typeof window._twCopyAll !== 'function') {
-    window._twCopyAll = function(toolId, btn) {
-        var tool = (typeof allTools !== 'undefined' ? allTools : []).find(function(t){ return (t.id||t._id) === toolId; });
-        if (!tool) { typeof toast==='function' && toast('টুল পাওয়া যায়নি','error'); return; }
-        var allCode = (tool.commands||[]).map(function(c){ return (c.code||'').trim(); }).filter(Boolean).join('\n\n');
-        if (!allCode) allCode = tool.code || '';
-        if (!allCode) { typeof toast==='function' && toast('কপি করার মতো কোড নেই','warning'); return; }
-        navigator.clipboard.writeText(allCode).then(function() {
-            if (btn) {
-                var orig = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-check"></i> সব কপি!';
-                btn.classList.add('copied');
-                setTimeout(function(){ btn.innerHTML=orig; btn.classList.remove('copied'); }, 1500);
-            }
-            typeof toast==='function' && toast('✅ সব কমান্ড কপি হয়েছে!','success');
-        }).catch(function(){ typeof toast==='function' && toast('❌ কপি ব্যর্থ','error'); });
-    };
-}
-
-if (typeof window._twCopyBlock !== 'function') {
-    window._twCopyBlock = function(blockId, btn) {
-        var block = document.getElementById(blockId);
-        if (!block) return;
-        var code = block.dataset.code || '';
-        if (!code) {
-            var body = block.querySelector('.tw-step-term-body');
-            if (body) code = body.innerText || body.textContent || '';
-        }
-        if (!code) { typeof toast==='function' && toast('কপি করার মতো কোড নেই','warning'); return; }
-        navigator.clipboard.writeText(code).then(function() {
-            if (btn) {
-                var orig = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-check"></i> কপি!';
-                btn.classList.add('copied');
-                setTimeout(function(){ btn.innerHTML=orig; btn.classList.remove('copied'); }, 1500);
-            }
-            typeof toast==='function' && toast('✅ কপি হয়েছে!','success');
-        }).catch(function(){ typeof toast==='function' && toast('❌ কপি ব্যর্থ','error'); });
-    };
-}
-
-if (typeof window._twCopyCode !== 'function') {
-    window._twCopyCode = function(code, btn) {
-        if (!code) { typeof toast==='function' && toast('কপি করার মতো কোড নেই','warning'); return; }
-        navigator.clipboard.writeText(code).then(function() {
-            if (btn) {
-                var orig = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-check"></i> কপি!';
-                btn.classList.add('copied');
-                setTimeout(function(){ btn.innerHTML=orig; btn.classList.remove('copied'); }, 1500);
-            }
-            typeof toast==='function' && toast('✅ কপি হয়েছে!','success');
-        }).catch(function(){ typeof toast==='function' && toast('❌ কপি ব্যর্থ','error'); });
-    };
-}
-
-// ✅ FIX: getCategoryIcon early guard
-if (typeof window.getCategoryIcon !== 'function') {
-    window.getCategoryIcon = function(cat) {
-        var icons = {
-            system:'⚙️', network:'🌐', security:'🔒', backup:'💾',
-            monitoring:'📊', automation:'🤖', download:'⬇️', devtools:'💻',
-            office:'📝', gaming:'🎮', files:'📁', windows:'🪟', other:'📜'
-        };
-        return icons[cat] || '📜';
-    };
-}
-
 })();
 
-
-// ✅ AUTO-SYNC: localStorage backup tools → Firestore (কোটা/permission ঠিক হলে)
-async function syncLocalBackupToFirestore() {
-    if (!fbDb || !fbAuth || !fbAuth.currentUser) return;
-    try {
-        var backup = JSON.parse(localStorage.getItem('autoscrip_tools_backup') || '[]');
-        if (!backup.length) return;
-        console.log('[AutoSync] Found', backup.length, 'local backup tools — syncing to Firestore...');
-        var synced = 0;
-        for (var i = 0; i < backup.length; i++) {
-            var tool = backup[i];
-            if (!tool._localOnly) continue;
-            try {
-                var data = Object.assign({}, tool);
-                delete data.id; delete data._id; delete data._localOnly; delete data.savedAt;
-                data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-                data.syncedFromBackup = true;
-                await fbDb.collection('autoscrip_tools').add(data);
-                synced++;
-                backup.splice(i, 1); i--;
-            } catch(e) {
-                if (e.code === 'resource-exhausted' || e.code === 'permission-denied') break;
-            }
+window._twCopyAll = function(toolId, btn) {
+    var tool = allTools.find(function(t){ return (t.id||t._id) === toolId; });
+    if (!tool) { toast('টুল পাওয়া যায়নি','error'); return; }
+    var allCode = (tool.commands||[]).map(function(c){ return (c.code||'').trim(); }).filter(Boolean).join('\n\n');
+    if (!allCode) allCode = tool.code || '';
+    if (!allCode) { toast('কপি করার মতো কোড নেই','warning'); return; }
+    navigator.clipboard.writeText(allCode).then(function() {
+        if (btn) {
+            var orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> সব কপি!';
+            btn.classList.add('copied');
+            setTimeout(function(){ btn.innerHTML=orig; btn.classList.remove('copied'); }, 1500);
         }
-        localStorage.setItem('autoscrip_tools_backup', JSON.stringify(backup));
-        if (synced > 0) {
-            toast('✅ ' + synced + 'টি ব্যাকআপ টুল Firestore এ সিঙ্ক হয়েছে!', 'success');
-            window._toolsCacheTs = 0;
-            loadTools(true);
-        }
-    } catch(e) { console.warn('[AutoSync]', e.message); }
-}
+        toast('✅ সব কমান্ড কপি হয়েছে!','success');
+    }).catch(function(){ toast('❌ কপি ব্যর্থ','error'); });
+};
 
+window._twCopyBlock = function(blockId, btn) {
+    var block = document.getElementById(blockId);
+    if (!block) return;
+    var code = block.dataset.code || '';
+    if (!code) {
+        var body = block.querySelector('.tw-step-term-body');
+        if (body) code = body.innerText || body.textContent || '';
+    }
+    if (!code) { toast('কপি করার মতো কোড নেই','warning'); return; }
+    navigator.clipboard.writeText(code).then(function() {
+        if (btn) {
+            var orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> কপি!';
+            btn.classList.add('copied');
+            setTimeout(function(){ btn.innerHTML=orig; btn.classList.remove('copied'); }, 1500);
+        }
+        toast('✅ কপি হয়েছে!','success');
+    }).catch(function(){ toast('❌ কপি ব্যর্থ','error'); });
+};
+
+window._twCopyCode = function(code, btn) {
+    if (!code) { toast('কপি করার মতো কোড নেই','warning'); return; }
+    navigator.clipboard.writeText(code).then(function() {
+        if (btn) {
+            var orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> কপি!';
+            btn.classList.add('copied');
+            setTimeout(function(){ btn.innerHTML=orig; btn.classList.remove('copied'); }, 1500);
+        }
+        toast('✅ কপি হয়েছে!','success');
+    }).catch(function(){ toast('❌ কপি ব্যর্থ','error'); });
+};
 </script>
-
-
-<!-- AutoScrip shared utilities -->
-<!-- firebase-config.js removed: config is inline -->
-
-
 </body>
 </html>
+[file content end]
