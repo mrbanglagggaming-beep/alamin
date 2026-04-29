@@ -1,6 +1,9 @@
 <script>
 // ═══════════════════════════════════════════════════════════
 // AUTOSCRIP ADMIN KILL SWITCH v4 — SAFE
+// শুধু pageSize=5 diagnostic loop block করে
+// setTimeout, eval, Function, createElement — patch করে না
+// Firefox সহ সব browser এ Firebase SDK নিরাপদ
 // ═══════════════════════════════════════════════════════════
 (function(){
   'use strict';
@@ -41,78 +44,6 @@
 
   console.log('[AutoScrip] Kill switch v4 active — Firebase safe');
 })();
-
-// ===== FIREBASE SDK LOADER (SIMPLIFIED) =====
-(function loadFirebaseSDK() {
-  const SDK_VERSION = '10.7.1';
-  const SDK_BASE = 'https://www.gstatic.com/firebasejs/' + SDK_VERSION + '/';
-  const FILES = [
-    'firebase-app-compat.js',
-    'firebase-auth-compat.js',
-    'firebase-firestore-compat.js'
-  ];
-  
-  window.__firebaseSDKReady = false;
-  let loaded = 0;
-  
-  function onLoad() {
-    loaded++;
-    if (loaded === FILES.length) {
-      window.__firebaseSDKReady = true;
-      console.log('[Firebase] ✅ SDK ready');
-      // Initialize Firebase after SDK loads
-      if (typeof initFirebaseAfterSDK === 'function') {
-        initFirebaseAfterSDK();
-      }
-    }
-  }
-  
-  for (let i = 0; i < FILES.length; i++) {
-    const script = document.createElement('script');
-    script.src = SDK_BASE + FILES[i];
-    script.onload = onLoad;
-    script.onerror = function() {
-      console.error('[Firebase] Failed to load:', FILES[i]);
-    };
-    document.head.appendChild(script);
-  }
-})();
-
-// ===== FIREBASE CONFIGURATION =====
-const FIREBASE_CONFIG = {
-    apiKey: "AIzaSyA5_HYl2R1Sa17xBeBhyxO4lGa9lAY5ut4",
-    authDomain: "autoscripcom.firebaseapp.com",
-    projectId: "autoscripcom",
-    storageBucket: "autoscripcom.firebasestorage.app",
-    messagingSenderId: "709315727810",
-    appId: "1:709315727810:web:abeb73172635061343c65b"
-};
-
-// Global Firebase instances
-let fbApp, fbAuth, fbDb;
-
-function initFirebaseAfterSDK() {
-  if (fbApp) return;
-  try {
-    fbApp = firebase.initializeApp(FIREBASE_CONFIG);
-    fbAuth = firebase.auth(fbApp);
-    fbDb = firebase.firestore(fbApp);
-    console.log('[Firebase] ✅ Initialized with project:', FIREBASE_CONFIG.projectId);
-    window._firebaseInitOK = true;
-    
-    // Trigger auth state listener
-    if (typeof waitAndRegisterAuthListener === 'function') {
-      waitAndRegisterAuthListener();
-    }
-  } catch(e) {
-    console.error('[Firebase] Init error:', e.message);
-  }
-}
-
-// If SDK already loaded, init immediately
-if (window.__firebaseSDKReady) {
-  initFirebaseAfterSDK();
-}
 </script>
 <script>
 // ✅ Firestore WebChannel console noise suppress
@@ -147,73 +78,10 @@ if (window.__firebaseSDKReady) {
   <!-- AutoScrip Shared Dark Theme CSS -->
   <link rel="stylesheet" href="shared.css">
   <!-- Firebase SDK -->
-  <script>
-  (function() {
-    var VER = '10.7.1';
-    // CDN priority: jsdelivr first (most reliable globally), then gstatic, then unpkg
-    var CDNs = [
-      'https://cdn.jsdelivr.net/npm/firebase@' + VER + '/',
-      'https://www.gstatic.com/firebasejs/' + VER + '/',
-      'https://unpkg.com/firebase@' + VER + '/'
-    ];
-    var files = [
-      'firebase-app-compat.js',
-      'firebase-auth-compat.js',
-      'firebase-firestore-compat.js'
-    ];
-    var cdnIdx = 0, fileIdx = 0;
-    window.__firebaseSDKReady = false;
-
-    function loadFile() {
-      if (fileIdx >= files.length) {
-        window.__firebaseSDKReady = true;
-        console.log('[Firebase] SDK ready via ' + CDNs[cdnIdx]);
-        return;
-      }
-      var s = document.createElement('script');
-      var url = CDNs[cdnIdx] + files[fileIdx];
-      s.src = url;
-
-      // Timeout: if file takes > 8s, try next CDN
-      var timer = setTimeout(function() {
-        s.onload = s.onerror = null;
-        document.head.removeChild(s);
-        tryNextCDN();
-      }, 8000);
-
-      s.onload = function() {
-        clearTimeout(timer);
-        fileIdx++;
-        loadFile();
-      };
-      s.onerror = function() {
-        clearTimeout(timer);
-        tryNextCDN();
-      };
-      document.head.appendChild(s);
-    }
-
-    function tryNextCDN() {
-      if (cdnIdx < CDNs.length - 1) {
-        cdnIdx++;
-        fileIdx = 0; // restart all files from new CDN
-        console.info('[Firebase] Switching CDN to: ' + CDNs[cdnIdx]);
-        loadFile();
-      } else {
-        // All CDNs failed
-        console.error('[Firebase] All CDNs failed. Check internet connection.');
-        window.__firebaseSDKReady = false;
-        var el = document.getElementById('loginConnStatus');
-        if (el) {
-          el.innerHTML = '<i class="fas fa-times-circle"></i> Firebase লোড ব্যর্থ। ইন্টারনেট চেক করুন।';
-          el.className = 'alert alert-danger';
-        }
-      }
-    }
-
-    loadFile();
-  })();
-  </script>
+  <!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js" defer></script>
@@ -4237,7 +4105,7 @@ window.doLogin = function() {
 <div id="fsWarnBanner" style="display:none;background:linear-gradient(90deg,rgba(255,61,87,.9),rgba(255,100,50,.9));color:#1fd6b0;text-align:center;padding:10px 20px;font-family:var(--font-head);font-size:.88rem;font-weight:700;position:fixed;top:0;left:0;right:0;z-index:99998;display:flex;align-items:center;justify-content:center;gap:12px">
   <i class="fas fa-exclamation-triangle"></i>
   <span>⚠️ autoscrip_tools collection খালি — Firebase Console থেকে টুল যোগ করুন অথবা Rules চেক করুন</span>
-  <a href="https://console.firebase.google.com/project/powerscript-pro-web/firestore" target="_blank"
+  <a href="https://console.firebase.google.com/project/autoscripcom/firestore" target="_blank"
      style="background:rgba(31,214,176,.25);padding:4px 14px;border-radius:99px;color:#1fd6b0;text-decoration:none;font-size:.82rem;white-space:nowrap">
     Firebase Console খুলুন →
   </a>
@@ -5878,6 +5746,15 @@ const IS_LOCAL_ADMIN = location.protocol === 'file:';
         }
     }, 12000);
 })();
+// ===== FIREBASE CONFIGURATION & INITIALIZATION =====
+const FIREBASE_CONFIG = {
+    apiKey:            "AIzaSyA5_HYl2R1Sa17xBeBhyxO4lGa9lAY5ut4",
+    authDomain:        "autoscripcom.firebaseapp.com",
+    projectId:         "autoscripcom",
+    storageBucket:     "autoscripcom.firebasestorage.app",
+    messagingSenderId: "709315727810",
+    appId:             "1:709315727810:web:abeb73172635061343c65b"
+};
 
 const ADMIN_UID_MASTER   = "9doS49dpnZRzrOaOg25VH7bkDlf1";
 
@@ -7632,7 +7509,7 @@ async function migrateLocalTools() {
 
     // ── Firestore REST API ব্যবহার করি — WebChannel timeout এড়াতে ──
     // Batch size: ৫টি করে, প্রতিটির মাঝে ৩০০ms বিরতি
-    const PROJECT = 'powerscript-pro-web';
+    const PROJECT = 'autoscripcom';
     const DB = '(default)';
     const COLLECTION = 'autoscrip_tools';
     
@@ -7774,12 +7651,12 @@ function _showGuideNow() {
         নিচের ধাপগুলো অনুসরণ করুন:
       </div>
       <div style="display:flex;flex-direction:column;gap:12px">
-        <a href="https://console.firebase.google.com/project/powerscript-pro-web/firestore" target="_blank"
+        <a href="https://console.firebase.google.com/project/autoscripcom/firestore" target="_blank"
            style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:rgba(31,214,176,.08);border:1px solid rgba(31,214,176,.25);border-radius:12px;color:#1fd6b0;text-decoration:none;font-weight:700;font-size:.9rem">
           <span style="font-size:1.4rem">1️⃣</span>
           <div>
             <div>Firestore Database খুলুন</div>
-            <div style="font-size:.78rem;color:rgba(31,214,176,.7);font-weight:400">console.firebase.google.com → powerscript-pro-web → Firestore</div>
+            <div style="font-size:.78rem;color:rgba(31,214,176,.7);font-weight:400">console.firebase.google.com → autoscripcom → Firestore</div>
           </div>
           <i class="fas fa-external-link-alt" style="margin-left:auto;font-size:.8rem;opacity:.7"></i>
         </a>
@@ -10866,7 +10743,7 @@ window.showFirestoreRulesHelp = function() {
       </div>
       <div style="margin-bottom:16px">
         <div style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.82rem;color:#1fd6b0;letter-spacing:1px;margin-bottom:8px">&#128203; ধাপ ১ — Firebase Console খুলুন</div>
-        <a href="https://console.firebase.google.com/project/powerscript-pro-web/firestore/rules" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:rgba(31,214,176,.08);border:1px solid rgba(31,214,176,.25);border-radius:10px;color:#1fd6b0;text-decoration:none;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.88rem">
+        <a href="https://console.firebase.google.com/project/autoscripcom/firestore/rules" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:rgba(31,214,176,.08);border:1px solid rgba(31,214,176,.25);border-radius:10px;color:#1fd6b0;text-decoration:none;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.88rem">
           <i class="fas fa-external-link-alt"></i> Firebase Console Firestore Rules খুলুন
         </a>
       </div>
