@@ -5814,15 +5814,16 @@ const IS_LOCAL_ADMIN = location.protocol === 'file:';
 })();
 // ===== FIREBASE CONFIGURATION & INITIALIZATION =====
 const FIREBASE_CONFIG = {
-    apiKey:            "AIzaSyA5_HYl2R1Sa17xBeBhyxO4lGa9lAY5ut4",
-    authDomain:        "autoscripcom.firebaseapp.com",
-    projectId:         "autoscripcom",
-    storageBucket:     "autoscripcom.firebasestorage.app",
-    messagingSenderId: "709315727810",
-    appId:             "1:709315727810:web:abeb73172635061343c65b"
+    apiKey: "AIzaSyBrh6Lm11Kz0-Hu3CT-TlifkrXiGnLY0Z4",
+    authDomain: "autoscripcom.firebaseapp.com",
+    projectId: "autoscripcom",
+    storageBucket: "autoscripcom.firebasestorage.app",
+    messagingSenderId: "33311043373",
+    appId: "1:33311043373:web:46f308c71fc97b99e4ada4",
+    measurementId: "G-QZR6MYKLPS"
 };
 
-const ADMIN_UID_MASTER   = "9doS49dpnZRzrOaOg25VH7bkDlf1";
+const ADMIN_UID_MASTER   = "LE4ZemsgrGNN3PmfFr3qgPYEenk1";
 
 // ✅ FIX: Firestore WebChannel নয়েজি errors suppress করো
 // (404, WebChannel, Listen errors — এগুলো normal long-polling fallback behavior)
@@ -10897,7 +10898,7 @@ service cloud.firestore {
     function isAdmin() {
       return request.auth != null && (
         request.auth.token.email == '<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="08657a6a69666f64696f6f6f696561666f486f65696164266b6765">[email&#160;protected]</a>' ||
-        request.auth.uid == '9doS49dpnZRzrOaOg25VH7bkDlf1' ||
+        request.auth.uid == 'LE4ZemsgrGNN3PmfFr3qgPYEenk1' ||
         exists(/databases/$(database)/documents/autoscrip_admins/$(request.auth.uid))
       );
     }
