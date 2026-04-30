@@ -115,27 +115,13 @@
   <!-- AutoScrip Shared Dark Theme CSS -->
   <link rel="stylesheet" href="shared.css">
   <!-- Firebase SDK -->
-  <!-- Firebase SDK — CDN fallback (jsdelivr → gstatic → unpkg) -->
+  <!-- Firebase SDK v10.7.1 — Direct CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-app-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-firestore-compat.js"></script>
   <script>
-  (function(){
-    var VER='10.7.1';
-    var CDNs=['https://cdn.jsdelivr.net/npm/firebase@'+VER+'/','https://www.gstatic.com/firebasejs/'+VER+'/','https://unpkg.com/firebase@'+VER+'/'];
-    var files=['firebase-app-compat.js','firebase-auth-compat.js','firebase-firestore-compat.js'];
-    var ci=0,fi=0; window.__firebaseSDKReady=false;
-    function load(){
-      if(fi>=files.length){window.__firebaseSDKReady=true;console.log('[Firebase] SDK ready via '+CDNs[ci]);return;}
-      var s=document.createElement('script'); s.src=CDNs[ci]+files[fi];
-      var t=setTimeout(function(){s.onload=s.onerror=null;try{document.head.removeChild(s);}catch(_){}tryNextCDN();},8000);
-      s.onload=function(){clearTimeout(t);fi++;load();};
-      s.onerror=function(){clearTimeout(t);tryNextCDN();};
-      document.head.appendChild(s);
-    }
-    function tryNextCDN(){
-      if(ci<CDNs.length-1){ci++;fi=0;console.info('[Firebase] Switching CDN → '+CDNs[ci]);load();}
-      else{console.error('[Firebase] All CDNs failed');}
-    }
-    load();
-  })();
+    window.__firebaseSDKReady = !!(typeof firebase !== 'undefined' && firebase.app);
+    console.log('[Init] Firebase SDK check:', window.__firebaseSDKReady);
   </script>
   <script>
   // ✅ Firebase SDK ready signal + CDN fallback check
@@ -4952,30 +4938,50 @@ const TabSync = {
 (function initFirebaseUser(){
   const FB_CONFIG = {
     apiKey:            "AIzaSyA5_HYl2R1Sa17xBeBhyxO4lGa9lAY5ut4",
-    authDomain:        "powerscript-pro-web.firebaseapp.com",
-    projectId:         "powerscript-pro-web",
-    storageBucket:     "powerscript-pro-web.firebasestorage.app",
+    authDomain:        "autoscripcom.firebaseapp.com",
+    projectId:         "autoscripcom",
+    storageBucket:     "autoscripcom.firebasestorage.app",
     messagingSenderId: "709315727810",
-    appId:             "1:709315727810:web:abeb73172635061343c65b",
-    databaseId:        "(default)"
+    appId:             "1:709315727810:web:abeb73172635061343c65b"
   };
-  function tryInit(){
-    if(typeof firebase !== 'undefined'){
-      try{
-        if(!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
-        else firebase.app();
-        window._fbDb   = firebase.firestore();
-        window._fbAuth = firebase.auth();
-        // Force long-polling + asia-south2 host fix
-        try {
-          // ✅ FIX: autoDetect=true + forceLong=false to stop VM channel loops on 429
-          window._fbDb.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED, experimentalForceLongPolling: false, experimentalAutoDetectLongPolling: true, ignoreUndefinedProperties: true, merge: true }); /* PATCHED */
-        } catch(_se) {}
-        // Firebase initialized silently
-      }catch(e){ console.warn('Firebase init:',e.message); }
-    } else { setTimeout(tryInit,200); }
+
+  function checkAndInit() {
+    if (typeof firebase === 'undefined') {
+      setTimeout(checkAndInit, 300);
+      return;
+    }
+    try {
+      if (!firebase.apps.length) {
+        window._fbApp = firebase.initializeApp(FB_CONFIG);
+      } else {
+        window._fbApp = firebase.app();
+      }
+      window.fbApp   = window._fbApp;
+      window._fbAuth = firebase.auth();
+      window._fbDb   = firebase.firestore();
+      window.fbAuth  = window._fbAuth;
+      window.fbDb    = window._fbDb;
+      try {
+        window._fbDb.settings({
+          experimentalForceLongPolling: true,
+          experimentalAutoDetectLongPolling: false,
+          ignoreUndefinedProperties: true,
+          merge: true
+        });
+      } catch(_) {}
+      window.__firebaseSDKReady = true;
+      window._firebaseInitOK    = true;
+      console.log('[Firebase] ✅ Init SUCCESS — autoscripcom');
+      if (typeof waitAndRegisterAuthListener === 'function') {
+        waitAndRegisterAuthListener();
+      }
+    } catch(e) {
+      console.error('[Firebase] Init error:', e.message);
+      setTimeout(checkAndInit, 1000);
+    }
   }
-  tryInit();
+
+  checkAndInit();
 })();
 
 // ===== APP INITIALIZATION =====
@@ -6363,7 +6369,7 @@ window.showSkeletonCards = function(containerId, count, height){
     try{
       var evts = JSON.parse(localStorage.getItem('_as_ev')||'[]');
       [].push.apply(evts,_q);
-      if(evts.length>500) evts = evts.slice(-500);
+      if(evts.length>1000) evts = evts.slice(-1000);
       localStorage.setItem('_as_ev', JSON.stringify(evts));
     }catch(e){}
     _q = [];
@@ -6421,7 +6427,7 @@ document.addEventListener('keydown', function(e){
   if(e.key !== 'Escape') return;
   try{ if(typeof closeSearch==='function' && document.getElementById('searchOverlay') && document.getElementById('searchOverlay').style.display!=='none'){ closeSearch(); return; } }catch(ex){}
   try{ if(typeof closeToolWindow==='function' && document.getElementById('toolWindow') && document.getElementById('toolWindow').style.display!=='none'){ closeToolWindow(); return; } }catch(ex){}
-  try{ document.querySelectorAll('.modal').forEach(function(m){ if(m.style.display!=='none'){m.style.display='none';} }); }catch(ex){}
+  try{ document.querySelectorAll('.modal,.modal-overlay').forEach(function(m){ if(m.style.display!=='none'&&m.style.display!==''){m.style.display='none';} }); }catch(ex){}
 });
 
 // ── SECURITY UPGRADE (full check) ─────────────────────────────
@@ -6491,7 +6497,14 @@ document.addEventListener('click',function(e){
   var _attempts = 0;
   var _iv = setInterval(function() {
     if (_attempts++ > 20) { clearInterval(_iv); return; }
-    if (window._fbDb && window.firebase) { clearInterval(_iv); trySync(); }
+    // ✅ FIX: Use correct firebase db reference (fbDb or _fbDb)
+    var db = window._fbDb || window.fbDb;
+    if (db && window.firebase) {
+      clearInterval(_iv);
+      // Assign _fbDb for compatibility
+      if (!window._fbDb) window._fbDb = db;
+      trySync();
+    }
   }, 1000);
 })();
 </script>
@@ -6501,14 +6514,17 @@ document.addEventListener('click',function(e){
 // USER — PERSISTENT FETCH PATCH v3
 // ═══════════════════════════════════════════════════════════
 (function _persistFetchPatch(){
+  // ✅ FIX: Only apply if not already patched by kill switch
+  if (window._fcKillSwitchActive || window._persistPatchDone) return;
+  window._persistPatchDone = true;
   function _isLoop(u){
     var s=String(u||'');
     return s.indexOf('pageSize=5')>=0||s.indexOf('pageSize%3D5')>=0||
            (s.indexOf('autoscrip_tools')>=0&&s.indexOf('pageSize')>=0&&s.indexOf('documents/')>=0);
   }
   function _applyPatch(){
-    var _nf=window._nativeFetch||window.fetch;
-    if(!window._nativeFetch)window._nativeFetch=window.fetch;
+    var _nf=window._nativeFetch||window._originalFetch||window.fetch;
+    if(!window._nativeFetch)window._nativeFetch=_nf;
     window.fetch=function(url,opts){
       if(_isLoop(url)){
         return new Promise(function(){/* hangs — kills Read test loop */});
@@ -6529,7 +6545,7 @@ document.addEventListener('click',function(e){
     }
   }
   _applyPatch();
-  var _c=0,_iv=setInterval(function(){_applyPatch();if(++_c>=60)clearInterval(_iv);},500);
+  var _c=0,_iv=setInterval(function(){_applyPatch();if(++_c>=30)clearInterval(_iv);},1000);
   console.log('[AutoScrip] User Persistent patch active ✓');
 })();
 </script>
