@@ -8114,31 +8114,49 @@ function rstTool() {
 }
 
 async function saveTool(preview = false) {
-    const title = document.getElementById('toolTitle').value.trim();
-    const category = document.getElementById('toolCat').value;
-    const description = document.getElementById('toolDesc').value.trim();
-    const author = document.getElementById('toolAuthor').value.trim() || 'AutoScrip Team';
-    const tags = document.getElementById('toolTags').value.trim();
-    const youtube = document.getElementById('toolYT').value.trim();
-    const thumbnail = document.getElementById('toolThumb').value.trim();
-    const slug = document.getElementById('toolSlug').value.trim() || generateSlugFromTitle(title);
-    const metaDesc = document.getElementById('toolMetaDesc').value.trim() || description.substring(0, 160);
-    const published = document.getElementById('toolPublished').checked;
-    const featured = document.getElementById('toolFeatured').checked;
-    const verified = document.getElementById('toolVerified').checked;
+    const title = document.getElementById('toolTitle')?.value.trim();
+    const category = document.getElementById('toolCat')?.value;
+    const description = document.getElementById('toolDesc')?.value.trim();
+    const author = document.getElementById('toolAuthor')?.value.trim() || 'AutoScrip Team';
+    const tags = document.getElementById('toolTags')?.value.trim();
+    const youtube = document.getElementById('toolYT')?.value.trim();
+    const thumbnail = document.getElementById('toolThumb')?.value.trim();
+    const slug = document.getElementById('toolSlug')?.value.trim() || generateSlugFromTitle(title);
+    const metaDesc = document.getElementById('toolMetaDesc')?.value.trim() || (description || '').substring(0, 160);
+    const published = document.getElementById('toolPublished')?.checked;
+    const featured = document.getElementById('toolFeatured')?.checked;
+    const verified = document.getElementById('toolVerified')?.checked;
     
-    const commands = cmdManager ? cmdManager.getBlocksData() : [];
+    // Get commands from cmdManager
+    let commands = [];
+    if (cmdManager) {
+        try {
+            const rawCommands = cmdManager.getBlocksData();
+            if (Array.isArray(rawCommands)) {
+                // ✅ CRITICAL FIX: Deep clean each command to plain object
+                commands = rawCommands.map((cmd, idx) => ({
+                    title: String(cmd?.title || cmd?.name || `Command ${idx + 1}`),
+                    code: String(cmd?.code || '\),
+                    comment: String(cmd?.comment || '\),
+                    order: Number(cmd?.order) ?? idx
+                }));
+            }
+        } catch(e) {
+            console.warn('Error getting commands:', e);
+            commands = [];
+        }
+    }
     
     // Validation
     if (!title) {
         toast('শিরোনাম লিখুন!', 'error');
-        document.getElementById('toolTitle').focus();
+        document.getElementById('toolTitle')?.focus();
         return;
     }
     
     if (!description) {
         toast('বিবরণ লিখুন!', 'error');
-        document.getElementById('toolDesc').focus();
+        document.getElementById('toolDesc')?.focus();
         return;
     }
     
@@ -8147,31 +8165,18 @@ async function saveTool(preview = false) {
         return;
     }
     
-    // Auto-test before save
-    const testResult = await testCommands(commands);
-    if (!testResult.success) {
-        if (!confirm(`টেস্ট Failed: ${testResult.error}\n\nতারপরও সেভ করবেন?`)) {
-            return;
-        }
+    const editId = document.getElementById('editToolId')?.value;
+    const btn = document.getElementById('toolSaveBtn');
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> সেভ হচ্ছে...';
+        btn.disabled = true;
     }
     
-    const editId = document.getElementById('editToolId').value;
-    const version = document.getElementById('toolVersion').value;
-    const btn = document.getElementById('toolSaveBtn');
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> সেভ হচ্ছে...';
-    btn.disabled = true;
-    
     try {
-        // Get subcategory if selected
-        const subcategoryEl = document.getElementById('toolSubcat');
-        const subcategory = subcategoryEl ? subcategoryEl.value : '';
-
         const toolData = {
             title,
-            name: title,        // user.html compatibility
+            name: title,
             category,
-            subcategory: subcategory || '',  // ✅ subcategory সেভ হবে
-            subCategory: subcategory || '',  // user.html camelCase compatibility
             description,
             author,
             tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
@@ -8179,89 +8184,59 @@ async function saveTool(preview = false) {
             thumbnail: thumbnail || null,
             slug: slug,
             metaDesc: metaDesc,
-            commands,
-            published,
-            featured,
-            verified,
+            commands: commands,  // Now clean array of plain objects
+            published: published !== false,
+            featured: featured || false,
+            verified: verified || false,
             status: published ? 'approved' : 'pending',
             updatedAt: new Date().toISOString()
         };
-
-        // ✅ Direct Firestore — কোনো backend দরকার নেই
-        if (!fbDb) { toast('Firebase সংযুক্ত নয়', 'error'); return; }
-
-        // ── Duplicate Check (skip for edits) ──────────────────────────
-        if (!editId && window.checkDuplicateBeforeSave) {
-            const dupResult = await window.checkDuplicateBeforeSave(
-                { title, commands, tags: toolData.tags },
-                null  // no excludeId for new tools
-            );
-            if (!dupResult.allowed) {
-                btn.innerHTML = '<i class="fas fa-save"></i> সেভ করুন';
-                btn.disabled = false;
-                return; // user cancelled — abort save
-            }
+        
+        if (!fbDb) {
+            toast('Firebase সংযুক্ত নয', 'error');
+            return;
         }
+        
         if (editId) {
             await fbDb.collection('autoscrip_tools').doc(editId).update(toolData);
-            // Update in-memory
-            const idx = allTools.findIndex(t => (t.id||t._id) === editId);
+            const idx = allTools.findIndex(t => (t.id || t._id) === editId);
             if (idx >= 0) allTools[idx] = { ...allTools[idx], ...toolData, id: editId, _id: editId };
             toast(`✅ "${title}" আপডেট হয়েছে!`, 'success');
         } else {
             toolData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-            toolData.views = 0; toolData.downloads = 0; toolData.likes = 0;
+            toolData.views = 0;
+            toolData.downloads = 0;
+            toolData.likes = 0;
             const docRef = await fbDb.collection('autoscrip_tools').add(toolData);
             const newTool = { ...toolData, id: docRef.id, _id: docRef.id };
             allTools.unshift(newTool);
             toast(`✅ "${title}" যোগ হয়েছে!`, 'success');
         }
-
+        
         if (preview) window.open('/user.html', '_blank');
-        // ✅ Notify user.html to refresh tools
-        try { var _ch = new BroadcastChannel('autoscrip_sync'); _ch.postMessage({ type: 'tools_updated', action: editId ? 'update' : 'add' }); _ch.close(); } catch(_) {}
+        
+        // Notify other tabs
+        try {
+            const ch = new BroadcastChannel('autoscrip_sync');
+            ch.postMessage({ type: 'tools_updated', action: editId ? 'update' : 'add' });
+            ch.close();
+        } catch(e) {}
+        
         showP('tools');
         renderToolsTable(allTools);
-        window._toolsCacheTs = 0; // invalidate cache so next loadTools() refreshes
+        window._toolsCacheTs = 0;
         loadDashboard();
-    } catch (error) {
-        console.error('[saveTool] Firestore error:', error.code, error.message);
-        // ✅ localStorage fallback — Firestore fail হলেও টুল হারাবে না
-        try {
-            var _lsTools = JSON.parse(localStorage.getItem('autoscrip_tools_backup') || '[]');
-            var _backupTool = { ...toolData, id: editId || ('local_' + Date.now()), _id: editId || ('local_' + Date.now()), _localOnly: true, savedAt: new Date().toISOString() };
-            if (editId) {
-                var _idx = _lsTools.findIndex(function(t){ return t.id === editId; });
-                if (_idx >= 0) _lsTools[_idx] = _backupTool; else _lsTools.unshift(_backupTool);
-            } else {
-                _lsTools.unshift(_backupTool);
-            }
-            localStorage.setItem('autoscrip_tools_backup', JSON.stringify(_lsTools));
-            console.log('[saveTool] ✅ Saved to localStorage backup');
-        } catch(_lsErr) {}
         
-        if (error.code === 'permission-denied') {
-            toast('⚠️ Firestore Permission Denied — টুল localStorage এ সেভ হয়েছে। Firestore Rules ঠিক করলে auto-sync হবে।', 'warning');
-            // Still update UI
-            if (!editId) { allTools.unshift({ ...toolData, id: 'local_' + Date.now(), _localOnly: true }); }
-            renderToolsTable(allTools);
-            showP('tools');
-        } else if (error.code === 'resource-exhausted') {
-            toast('⚠️ Quota শেষ — টুল localStorage এ সেভ হয়েছে। কোটা রিসেট হলে auto-sync হবে।', 'warning');
-            if (!editId) { allTools.unshift({ ...toolData, id: 'local_' + Date.now(), _localOnly: true }); }
-            renderToolsTable(allTools);
-            showP('tools');
-        } else if (error.code === 'not-found') {
-            toast('❌ Tool not found — refresh করুন', 'error');
-        } else {
-            toast('⚠️ সেভ সমস্যা: ' + error.message + ' — localStorage এ ব্যাকআপ হয়েছে', 'warning');
-        }
+    } catch(error) {
+        console.error('[saveTool] Error:', error);
+        toast('সেভ করতে সমস্যা: ' + (error.message || 'অজানা ত্রুটি'), 'error');
     } finally {
-        btn.innerHTML = '<i class="fas fa-save"></i> সেভ করুন';
-        btn.disabled = false;
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-save"></i> সেভ করুন';
+            btn.disabled = false;
+        }
     }
 }
-
 async function editTool(id) {
     try {
         let tool = null;
