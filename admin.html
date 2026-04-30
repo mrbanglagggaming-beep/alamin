@@ -105,6 +105,41 @@ window.closeMobileMenu = closeMobileMenu;
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+// ✅ FIX: CDN fallback — gstatic fail হলে jsdelivr থেকে লোড করো
+(function() {
+    function loadScript(src, cb) {
+        var s = document.createElement('script');
+        s.src = src;
+        s.onload = cb;
+        s.onerror = cb;
+        document.head.appendChild(s);
+    }
+    function checkAndFallback() {
+        if (typeof firebase !== 'undefined' &&
+            typeof firebase.app === 'function') {
+            window.__firebaseSDKReady = true;
+            return;
+        }
+        // gstatic fail — jsdelivr fallback
+        console.warn('[Firebase] gstatic CDN failed — loading jsdelivr fallback...');
+        var base = 'https://cdn.jsdelivr.net/npm/firebase@10.7.1/';
+        var loaded = 0;
+        function next() { if (++loaded === 3) window.__firebaseSDKReady = true; }
+        loadScript(base + 'firebase-app-compat.js', function() {
+            loadScript(base + 'firebase-auth-compat.js', next);
+            loadScript(base + 'firebase-firestore-compat.js', next);
+            next();
+        });
+    }
+    // Script গুলো sync load হয় — সাথে সাথে চেক করো
+    checkAndFallback();
+    // DOMContentLoaded এও চেক করো
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof firebase === 'undefined') checkAndFallback();
+    });
+})();
+</script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js" defer></script>
@@ -4093,7 +4128,15 @@ window.doLogin = function() {
     </div>
     
     <!-- Login Button -->
-    <button class="btn btn-pr" style="width:100%; padding:14px;" onclick="if(typeof doLogin==='function')doLogin();else if(window.doLogin)window.doLogin();" id="loginBtn">
+    <button class="btn btn-pr" style="width:100%; padding:14px;" onclick="(function(){
+  if(typeof doLogin==='function'){doLogin();return;}
+  // fallback: wait 1s then try again
+  var _t=0;
+  var _iv=setInterval(function(){
+    if(typeof doLogin==='function'){clearInterval(_iv);doLogin();}
+    else if(++_t>10){clearInterval(_iv);alert('Firebase লোড হয়নি। পেজ রিফ্রেশ করুন।');}
+  },300);
+})()" id="loginBtn">
       <i class="fas fa-shield-alt"></i> 
       <span>প্রবেশ করুন</span>
     </button>
@@ -5804,48 +5847,63 @@ const ADMIN_EMAIL_MASTER = "mrbanglagggaming@gmail.com";
 
 // Firebase instances (loaded from CDN scripts in <head>)
 let fbApp, fbAuth, fbDb;
+// ✅ FINAL: initFirebase — setInterval based, setTimeout-patch safe
 (function initFirebase() {
-    if (fbApp) return; // ✅ double-init guard
-    const maxWait = 10000;
-    const start = Date.now();
-    function tryInit() {
-        var sdkOK = window.__firebaseSDKReady === true
-            && typeof firebase !== 'undefined'
-            && typeof firebase.auth === 'function'
-            && typeof firebase.firestore === 'function';
-        if (sdkOK) {
-            try {
-                fbApp = firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
-                fbAuth = firebase.auth();
-                fbDb   = firebase.firestore();
-                // ✅ FIX: Single settings call (no double-init)
-                try {
-                    fbDb.settings({
-                        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
-                        experimentalForceLongPolling: true,
-                        experimentalAutoDetectLongPolling: false,
-                        ignoreUndefinedProperties: true,
-                        merge: true
-                    });
-                } catch(se) { /* settings already applied */ }
-                console.log('[Firebase] Init OK');
-                window._firebaseInitOK = true; // ✅ Flag for delayed guide
-                if (typeof waitAndRegisterAuthListener === 'function') {
-                    try { waitAndRegisterAuthListener(); } catch(_e) {}
-                }
-            } catch(e) {
-                console.error('[Firebase] Init error:', e.message);
-                if (Date.now() - start < maxWait) setTimeout(tryInit, 300);
-            }
-        } else if (Date.now() - start < maxWait) {
-            setTimeout(tryInit, 150);
-        } else {
-            console.error('[Firebase] SDK not ready after 10s');
+    if (fbApp) return;
+    var _attempts = 0;
+    var _iv = setInterval(function() {
+        if (fbApp) { clearInterval(_iv); return; }
+        if (_attempts++ > 80) {
+            clearInterval(_iv);
+            console.error('[Firebase] SDK not ready after 20s — check CDN or network');
             var el = document.getElementById('loginConnStatus');
             if (el) { el.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Firebase লোড হয়নি। পেজ রিফ্রেশ করুন।'; el.className = 'alert alert-danger'; }
+            return;
         }
-    }
-    tryInit();
+        if (typeof firebase === 'undefined' ||
+            typeof firebase.app !== 'function' ||
+            typeof firebase.auth !== 'function' ||
+            typeof firebase.firestore !== 'function') return;
+        clearInterval(_iv);
+        try {
+            fbApp  = firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
+            fbAuth = firebase.auth();
+            fbDb   = firebase.firestore();
+            window.__firebaseSDKReady = true;
+            window._firebaseInitOK    = true;
+            window.fbAuth = fbAuth;
+            window.fbDb   = fbDb;
+            try {
+                fbDb.settings({
+                    cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+                    experimentalForceLongPolling: true,
+                    experimentalAutoDetectLongPolling: false,
+                    ignoreUndefinedProperties: true,
+                    merge: true
+                });
+            } catch(_se) {}
+            console.log('[Firebase] ✅ Init OK — Auth + Firestore ready');
+            // waitAndRegisterAuthListener পরে define হয় — setInterval দিয়ে wait করো
+            var _authRetry = 0;
+            var _authIv = setInterval(function() {
+                if (typeof waitAndRegisterAuthListener === 'function') {
+                    clearInterval(_authIv);
+                    try { waitAndRegisterAuthListener(); } catch(_e) {}
+                } else if (_authRetry++ > 25) {
+                    clearInterval(_authIv);
+                    // Direct fallback
+                    fbAuth.onAuthStateChanged(function(user) {
+                        if (!user) return;
+                        if (typeof showApp === 'function') showApp();
+                        if (typeof loadDashboard === 'function') setTimeout(loadDashboard, 500);
+                    });
+                }
+            }, 200);
+        } catch(e) {
+            console.error('[Firebase] Init error:', e.message);
+            fbApp = null;
+        }
+    }, 250);
 })();
 
 // Firestore collections
@@ -7203,11 +7261,21 @@ async function doLogin() {
     if (errDiv) errDiv.style.display = 'none';
 
     try {
+        // ✅ FIX: Multiple fallback layers for fbAuth
         if (!fbAuth) {
-            if (window.__firebaseSDKReady && typeof firebase !== 'undefined' && typeof firebase.auth === 'function') {
-                try { fbAuth = firebase.auth(); fbDb = firebase.firestore(); } catch(_r) {}
+            // Layer 1: window.fbAuth (set by initFirebase)
+            if (window.fbAuth) { fbAuth = window.fbAuth; fbDb = window.fbDb; }
+            // Layer 2: firebase global directly
+            else if (typeof firebase !== 'undefined' && typeof firebase.auth === 'function') {
+                try {
+                    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+                    fbAuth = firebase.auth();
+                    fbDb   = firebase.firestore();
+                    window.fbAuth = fbAuth;
+                    window.fbDb   = fbDb;
+                } catch(_r) { console.warn('[doLogin] Firebase re-init failed:', _r.message); }
             }
-            if (!fbAuth) throw new Error('Firebase লোড হচ্ছে — অপেক্ষা করুন বা রিফ্রেশ করুন।');
+            if (!fbAuth) throw new Error('Firebase লোড হয়নি। পেজ রিফ্রেশ করে আবার চেষ্টা করুন।');
         }
 
         // Step 1: Firebase Auth sign-in
