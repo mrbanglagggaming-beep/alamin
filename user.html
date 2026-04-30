@@ -2843,19 +2843,29 @@ function getCatIcon(c){return{system:'fa-cogs',network:'fa-network-wired',securi
 function getCatName(c){return{system:'সিস্টেম',network:'নেটওয়ার্ক',security:'সিকিউরিটি',backup:'ব্যাকআপ',monitoring:'মনিটরিং',automation:'অটোমেশন'}[c]||c;}
 function getTools(){return App.tools.length?App.tools:DEFAULT_TOOLS;}
 function getToolCode(tool){
-  if(tool.commands&&tool.commands.length){
-    // commands is array of {title,code,comment,order} objects
-    return tool.commands.map(function(c){
+  // ✅ SAFE FIX: commands may be array, object, or other — normalize first
+  var cmds = tool.commands;
+  if (cmds && !Array.isArray(cmds)) {
+    // If it's a plain object (Firestore map), convert values to array
+    if (typeof cmds === 'object') {
+      cmds = Object.values(cmds);
+    } else {
+      cmds = null;
+    }
+  }
+  if(cmds && Array.isArray(cmds) && cmds.length){
+    return cmds.map(function(c){
+      if(!c) return '';
       if(typeof c==='string') return c;
       var parts=[];
       if(c.title) parts.push('# === '+c.title+' ===');
       if(c.comment) parts.push('# '+c.comment);
       if(c.code) parts.push(c.code);
       return parts.join('\n');
-    }).join('\n\n');
+    }).filter(Boolean).join('\n\n');
   }
   if(tool.code) return tool.code;
-  return '# '+Security.escapeHtml(tool.name||tool.title||'');
+  return '# '+(tool.name||tool.title||'');
 }
 
 // ===== TOAST =====
@@ -3306,8 +3316,12 @@ window.openToolDetail = window.openToolWindow = function(id) {
   // ─ Code ─ Step-by-step blocks with individual copy buttons
   const codeDiv = document.getElementById('twCode');
   if(codeDiv){
-    const cmds = tool.commands && tool.commands.length
-      ? tool.commands.filter(function(c){ return typeof c==='object' ? (c.code||'').trim() : (c||'').trim(); })
+    var _rawCmds = tool.commands;
+    if (_rawCmds && !Array.isArray(_rawCmds)) {
+      _rawCmds = (typeof _rawCmds === 'object') ? Object.values(_rawCmds) : null;
+    }
+    const cmds = _rawCmds && Array.isArray(_rawCmds) && _rawCmds.length
+      ? _rawCmds.filter(function(c){ return typeof c==='object' ? (c.code||'').trim() : (c||'').trim(); })
       : null;
     const totalCmds = cmds ? cmds.length : 1;
 
@@ -6191,7 +6205,8 @@ if (typeof window._twCopyAll !== 'function') {
     var tools = (typeof getTools==='function') ? getTools() : ((window.App&&window.App.tools)||[]);
     var tool = tools.find(function(t){ return (t._id||t.id)===toolId; });
     if (!tool) { if(typeof toast==='function') toast('টুল পাওয়া যায়নি','error'); return; }
-    var allCode = (tool.commands||[]).map(function(c){return (c.code||'').trim();}).filter(Boolean).join('\n\n');
+    var _cmds2 = Array.isArray(tool.commands) ? tool.commands : (tool.commands && typeof tool.commands==='object' ? Object.values(tool.commands) : []);
+    var allCode = _cmds2.map(function(c){return (typeof c==='object'?(c.code||''):(c||'')).trim();}).filter(Boolean).join('\n\n');
     if (!allCode) allCode = tool.code || '';
     if (!allCode) { if(typeof toast==='function') toast('কপি করার মতো কোড নেই','warning'); return; }
     navigator.clipboard.writeText(allCode).then(function() {
