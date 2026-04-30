@@ -1,3 +1,6 @@
+<!DOCTYPE html>
+<html lang="bn" dir="ltr">
+<head>
 <script>
 // ═══════════════════════════════════════════════════════════
 // AUTOSCRIP ADMIN KILL SWITCH v4 — SAFE
@@ -79,6 +82,26 @@
   <link rel="stylesheet" href="shared.css">
   <!-- Firebase SDK -->
   <!-- Firebase SDK -->
+<script>
+// ✅ FIX: Mobile menu functions — early definition (before HTML usage)
+function toggleMobileMenu() {
+    var sb = document.getElementById('sidebar');
+    var ov = document.getElementById('mobileOverlay');
+    if (!sb) return;
+    sb.classList.toggle('open');
+    if (ov) ov.classList.toggle('show');
+    document.body.classList.toggle('sb-open');
+}
+function closeMobileMenu() {
+    var sb = document.getElementById('sidebar');
+    var ov = document.getElementById('mobileOverlay');
+    if (sb) sb.classList.remove('open');
+    if (ov) ov.classList.remove('show');
+    document.body.classList.remove('sb-open');
+}
+window.toggleMobileMenu = toggleMobileMenu;
+window.closeMobileMenu = closeMobileMenu;
+</script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -5795,12 +5818,13 @@ let fbApp, fbAuth, fbDb;
                 fbApp = firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
                 fbAuth = firebase.auth();
                 fbDb   = firebase.firestore();
-                try { fbDb.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED, experimentalForceLongPolling: true, experimentalAutoDetectLongPolling: false, ignoreUndefinedProperties: true, merge: true }); } catch(e) {} /* PATCHED: optimized settings */
-                // Use long-polling to avoid WebChannel 404 errors on some networks
+                // ✅ FIX: Single settings call (no double-init)
                 try {
                     fbDb.settings({
+                        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
                         experimentalForceLongPolling: true,
                         experimentalAutoDetectLongPolling: false,
+                        ignoreUndefinedProperties: true,
                         merge: true
                     });
                 } catch(se) { /* settings already applied */ }
@@ -6684,6 +6708,10 @@ class CommandBlockManager {
 // ===== GLOBAL COMMAND MANAGER =====
 let cmdManager;
 
+
+// ===== YOUTUBE VIDEO MANAGEMENT (module scope) =====
+var _ytVideos = [];
+var _editYtId = null;
 // ===== INITIALIZATION (Firebase Auth State) =====
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize security module
@@ -6700,9 +6728,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Firebase Auth state listener is registered via waitAndRegisterAuthListener()
     // when fbAuth becomes available after Firebase SDK loads
     
-// ===== YOUTUBE VIDEO MANAGEMENT =====
-let _ytVideos = [];
-let _editYtId = null;
 
 // Default YouTube videos (same as user.html hardcoded)
 const DEFAULT_YT_VIDEOS = [
@@ -7364,20 +7389,60 @@ async function loadDashboard() {
     if (window._dashCacheTs && (now - window._dashCacheTs) < 120000) return;
     window._dashCacheTs = now;
     try {
-        const result = await API.get('/dashboard/stats');
-        if (result.success) {
-            animateNumber('d-tools', result.stats.tools || 0);
-            animateNumber('d-views', result.stats.views || 0);
-            animateNumber('d-dls', result.stats.downloads || 0);
-            animateNumber('d-likes', result.stats.likes || 0);
-            animateNumber('d-users', result.stats.users || 0);
-            animateNumber('d-reqs', result.stats.pendingRequests || 0);
-            animateNumber('d-online', result.stats.online || 0);
+        // ✅ FIX: API server call করো, ব্যর্থ হলে Firestore থেকে সরাসরি stats নাও
+        let stats = null;
+        try {
+            const result = await API.get('/dashboard/stats');
+            if (result.success) stats = result.stats;
+        } catch(apiErr) { /* API server unavailable — fallback to Firestore */ }
+
+        if (!stats && fbDb) {
+            // Direct Firestore count — API server ছাড়াই কাজ করে
+            try {
+                const [toolsSnap, usersSnap, reqsSnap] = await Promise.allSettled([
+                    fbDb.collection(FS.tools).get(),
+                    fbDb.collection(FS.users).get(),
+                    fbDb.collection(FS.requests).where('status','==','pending').get()
+                ]);
+                const tools = toolsSnap.status === 'fulfilled' ? toolsSnap.value.docs.map(d=>d.data()) : allTools;
+                let views=0, downloads=0, likes=0;
+                tools.forEach(t => { views+=t.views||0; downloads+=t.downloads||0; likes+=Number(t.likes)||0; });
+                stats = {
+                    tools: tools.length,
+                    views, downloads, likes,
+                    users: usersSnap.status === 'fulfilled' ? usersSnap.value.size : 0,
+                    pendingRequests: reqsSnap.status === 'fulfilled' ? reqsSnap.value.size : 0,
+                    online: 0
+                };
+                // Update allTools if empty
+                if (!allTools.length && tools.length) {
+                    allTools = toolsSnap.value.docs.map(d => ({id:d.id,_id:d.id,...d.data()}));
+                    renderRecentTools(allTools.slice(0,5));
+                }
+            } catch(fsErr) {
+                // Last resort: use allTools in memory
+                if (allTools.length) {
+                    let views=0, downloads=0, likes=0;
+                    allTools.forEach(t => { views+=t.views||0; downloads+=t.downloads||0; likes+=Number(t.likes)||0; });
+                    stats = { tools: allTools.length, views, downloads, likes, users:0, pendingRequests:0, online:0 };
+                }
+            }
+        }
+
+        if (stats) {
+            animateNumber('d-tools', stats.tools || 0);
+            animateNumber('d-views', stats.views || 0);
+            animateNumber('d-dls', stats.downloads || 0);
+            animateNumber('d-likes', stats.likes || 0);
+            animateNumber('d-users', stats.users || 0);
+            animateNumber('d-reqs', stats.pendingRequests || 0);
+            animateNumber('d-online', stats.online || 0);
         }
         
         renderCharts();
     } catch (error) {
-            }
+        console.warn('[loadDashboard]', error.message);
+    }
 }
 
 function animateNumber(elementId, target) {
@@ -7758,6 +7823,7 @@ async function loadTools(forceRefresh = false) {
     const localTools = JSON.parse(localStorage.getItem('autoscrip_tools') || '[]');
     if (localTools.length) {
       allTools = localTools;
+      window._toolsCacheTs = Date.now(); // ✅ FIX: cache timestamp set even on fallback
       renderToolsTable(allTools);
     }
   } finally {
@@ -7772,6 +7838,12 @@ function renderToolsTable(tools) {
     if (!tools || !tools.length) {
         tb.innerHTML = '';
         em.style.display = 'block';
+        // ✅ FIX: Empty collection — setup guide দেখাও
+        if (typeof showFirestoreSetupGuide === 'function') {
+            showFirestoreSetupGuide();
+        } else {
+            em.innerHTML = em.innerHTML || '<div style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fas fa-database" style="font-size:3rem;opacity:.3;margin-bottom:16px;display:block"></i><div style="font-size:1.1rem;font-weight:700;margin-bottom:8px">কোনো টুল নেই</div><div style="font-size:.85rem">Firebase Console থেকে টুল যোগ করুন অথবা নতুন টুল বাটনে ক্লিক করুন।</div></div>';
+        }
         return;
     }
     
@@ -10755,7 +10827,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isAdmin() {
-      return request.auth != null &amp;&amp; (
+      return request.auth != null && (
         request.auth.token.email == '<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="08657a6a69666f64696f6f6f696561666f486f65696164266b6765">[email&#160;protected]</a>' ||
         request.auth.uid == '9doS49dpnZRzrOaOg25VH7bkDlf1' ||
         exists(/databases/$(database)/documents/autoscrip_admins/$(request.auth.uid))
@@ -10768,7 +10840,7 @@ service cloud.firestore {
     }
     match /autoscrip_users/{docId} {
       allow read: if isAdmin();
-      allow write: if request.auth != null &amp;&amp;
+      allow write: if request.auth != null &&
         (request.auth.uid == docId || isAdmin());
     }
     match /autoscrip_admins/{docId} {
@@ -10784,7 +10856,7 @@ service cloud.firestore {
     }
     match /autoscrip_subscribers/{docId} {
       allow read, write: if isAdmin() ||
-        (request.auth != null &amp;&amp; request.auth.uid == docId);
+        (request.auth != null && request.auth.uid == docId);
     }
     match /autoscrip_youtube/{docId} {
       allow read: if true;
