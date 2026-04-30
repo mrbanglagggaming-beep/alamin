@@ -8136,8 +8136,8 @@ async function saveTool(preview = false) {
                 // ✅ CRITICAL FIX: Deep clean each command to plain object
                 commands = rawCommands.map((cmd, idx) => ({
                     title: String(cmd?.title || cmd?.name || `Command ${idx + 1}`),
-                    code: String(cmd?.code || '\),
-                    comment: String(cmd?.comment || '\),
+                    code: String(cmd?.code || ''),
+                    comment: String(cmd?.comment || ''),
                     order: Number(cmd?.order) ?? idx
                 }));
             }
