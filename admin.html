@@ -5131,6 +5131,49 @@ window.doLogin = function() {
           </div>
         </div>
 
+        <!-- ✅ AdSense Monetization Section -->
+        <div class="cd" style="margin-bottom:24px;border:2px solid rgba(66,133,244,.3);background:rgba(66,133,244,.04)">
+          <div class="cd-hd" style="background:rgba(66,133,244,.08)">
+            <div class="cd-tt" style="color:#4285f4">💰 Google AdSense মনিটাইজেশন</div>
+          </div>
+          <div class="cd-bd">
+            <div style="background:rgba(66,133,244,.08);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:.85rem;color:#4285f4;line-height:1.7">
+              <i class="fas fa-info-circle"></i> AdSense approve হলে নিচে আপনার <b>Publisher ID</b> বসান (ca-pub-XXXXXXXXXX)।
+              সেভ করলেই সাইটে সব জায়গায় ad চালু হয়ে যাবে। ID না থাকলে ফাঁকা রাখুন।
+            </div>
+            <div class="fg">
+              <label class="fl">AdSense Publisher ID</label>
+              <input type="text" class="fc" id="stAdSenseId" placeholder="ca-pub-XXXXXXXXXXXXXXXXX" style="font-family:monospace;letter-spacing:1px">
+              <div style="font-size:.75rem;color:var(--muted);margin-top:4px">AdSense Console → Account → Publisher ID থেকে কপি করুন</div>
+            </div>
+            <div class="fg">
+              <label class="fl">Ad Slot ID — Tools এর মাঝে</label>
+              <input type="text" class="fc" id="stAdSlotInFeed" placeholder="1234567890" style="font-family:monospace">
+            </div>
+            <div class="fg">
+              <label class="fl">Ad Slot ID — Header এর নিচে</label>
+              <input type="text" class="fc" id="stAdSlotHeader" placeholder="1234567890" style="font-family:monospace">
+            </div>
+            <div class="fg">
+              <label class="fl">Ad Slot ID — Footer এর উপরে</label>
+              <input type="text" class="fc" id="stAdSlotFooter" placeholder="1234567890" style="font-family:monospace">
+            </div>
+            <div class="fg">
+              <label class="fl">Ad Slot ID — Tool Popup এ</label>
+              <input type="text" class="fc" id="stAdSlotPopup" placeholder="1234567890" style="font-family:monospace">
+            </div>
+            <label class="fck" style="margin-top:8px">
+              <div class="tg"><input type="checkbox" id="stAdEnabled"><div class="tg-sl"></div></div>
+              💰 AdSense চালু করুন (ID বসানোর পর এটা টিক দিন)
+            </label>
+            <div id="adPreviewStatus" style="margin-top:12px;font-size:.8rem;padding:8px 12px;border-radius:6px;display:none"></div>
+          </div>
+        </div>
+
+
+          </div>
+        </div>
+
         <div class="cd" style="margin-bottom:24px">
           <div class="cd-hd"><div class="cd-tt">🏠 হোম পেজ কাস্টমাইজেশন</div></div>
           <div class="cd-bd">
@@ -9538,6 +9581,51 @@ async function loadSettings() {
             set('stTelegramGroup',   s.telegramGroup || '');
             set('stFacebookGroup',   s.facebookGroup || '');
             set('stFooterText',      s.footerText || '');
+            set('stAdSenseId',       s.adSenseId || '');
+            set('stAdSlotInFeed',    s.adSlotInFeed || '');
+            set('stAdSlotHeader',    s.adSlotHeader || '');
+            set('stAdSlotFooter',    s.adSlotFooter || '');
+            set('stAdSlotPopup',     s.adSlotPopup || '');
+            chk('stAdEnabled',       s.adEnabled || false);
+            var adStatus2 = document.getElementById('adPreviewStatus');
+            if (adStatus2) {
+              if (s.adSenseId && s.adEnabled) {
+                adStatus2.style.display = 'block';
+                adStatus2.style.background = 'rgba(34,197,94,.1)';
+                adStatus2.style.color = '#22c55e';
+                adStatus2.innerHTML = '✅ AdSense চালু আছে — Publisher ID: ' + s.adSenseId;
+              } else if (s.adSenseId && !s.adEnabled) {
+                adStatus2.style.display = 'block';
+                adStatus2.style.background = 'rgba(245,158,11,.1)';
+                adStatus2.style.color = '#f59e0b';
+                adStatus2.innerHTML = '⏸️ AdSense ID আছে কিন্তু বন্ধ আছে';
+              } else {
+                adStatus2.style.display = 'none';
+              }
+            }
+            set('stAdSenseId',       s.adSenseId || '');
+            set('stAdSlotInFeed',    s.adSlotInFeed || '');
+            set('stAdSlotHeader',    s.adSlotHeader || '');
+            set('stAdSlotFooter',    s.adSlotFooter || '');
+            set('stAdSlotPopup',     s.adSlotPopup || '');
+            chk('stAdEnabled',       s.adEnabled || false);
+            // Show status
+            const adStatus = document.getElementById('adPreviewStatus');
+            if (adStatus) {
+              if (s.adSenseId && s.adEnabled) {
+                adStatus.style.display = 'block';
+                adStatus.style.background = 'rgba(34,197,94,.1)';
+                adStatus.style.color = '#22c55e';
+                adStatus.innerHTML = '✅ AdSense চালু আছে — Publisher ID: ' + s.adSenseId;
+              } else if (s.adSenseId && !s.adEnabled) {
+                adStatus.style.display = 'block';
+                adStatus.style.background = 'rgba(245,158,11,.1)';
+                adStatus.style.color = '#f59e0b';
+                adStatus.innerHTML = '⏸️ AdSense ID আছে কিন্তু বন্ধ আছে';
+              } else {
+                adStatus.style.display = 'none';
+              }
+            }
             chk('stMaintenance',     s.maintenance);
             chk('stComments',        s.comments !== false);
             chk('stRequests',        s.requests !== false);
@@ -9580,6 +9668,12 @@ async function saveSettings() {
         telegramGroup:      get('stTelegramGroup'),
         facebookGroup:      get('stFacebookGroup'),
         footerText:         get('stFooterText'),
+        adSenseId:          get('stAdSenseId').trim(),
+        adSlotInFeed:       get('stAdSlotInFeed').trim(),
+        adSlotHeader:       get('stAdSlotHeader').trim(),
+        adSlotFooter:       get('stAdSlotFooter').trim(),
+        adSlotPopup:        get('stAdSlotPopup').trim(),
+        adEnabled:          chk('stAdEnabled'),
     };
 
     if (!fbDb) { toast('অফলাইন — সেভ করা গেল না', 'error'); return; }
