@@ -5091,8 +5091,7 @@ const TabSync = {
       window.fbDb    = window._fbDb;
       try {
         window._fbDb.settings({
-          experimentalForceLongPolling: true,
-          experimentalAutoDetectLongPolling: false,
+          experimentalAutoDetectLongPolling: true,
           ignoreUndefinedProperties: true,
           merge: true
         });
