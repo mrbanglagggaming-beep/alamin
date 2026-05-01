@@ -2558,6 +2558,13 @@ Get-Date | Format-List"></textarea>
         </div>
       </div>
 
+      <!-- ✅ AdSense Popup Ad -->
+      <div id="tw-ad-slot" style="display:none;padding:12px 20px;text-align:center;background:rgba(66,133,244,.04);border-top:1px solid rgba(66,133,244,.1)">
+        <div style="font-size:.65rem;color:var(--muted);margin-bottom:4px;letter-spacing:1px">বিজ্ঞাপন</div>
+        <ins id="tw-ad-ins" class="adsbygoogle" style="display:block;width:100%;min-height:100px"
+          data-ad-format="fluid" data-ad-layout-key="-6t+ed+2i-1n-4w" data-full-width-responsive="true"></ins>
+      </div>
+
       <!-- Share Section -->
       <div class="tw-share-section">
         <div class="tw-code-label"><i class="fas fa-share-alt"></i> শেয়ার করুন</div>
@@ -3246,6 +3253,17 @@ const CAT_COLORS_WIN = {
 };
 
 window.openToolDetail = window.openToolWindow = function(id) {
+  // ✅ Activate popup ad if AdSense enabled
+  var twAdSlot = document.getElementById('tw-ad-slot');
+  var twAdIns  = document.getElementById('tw-ad-ins');
+  if (twAdSlot && twAdIns && window._adSenseId && window._adSlotPopup) {
+    twAdSlot.style.display = 'block';
+    if (!twAdIns.getAttribute('data-ad-client')) {
+      twAdIns.setAttribute('data-ad-client', window._adSenseId);
+      twAdIns.setAttribute('data-ad-slot',   window._adSlotPopup);
+      setTimeout(function(){ try{(window.adsbygoogle=window.adsbygoogle||[]).push({});}catch(_){} }, 200);
+    }
+  }
   const tool = getTools().find(t=>(t._id||t.id)===id);
   if(!tool) return;
   App.currentTool = tool;
@@ -3835,7 +3853,81 @@ async function applyFirestoreSettings(){
       // run button removed
     }
 
+  // ✅ ADSENSE: Load and inject ads if enabled
+  if(s.adEnabled && s.adSenseId) {
+    window._adSenseId      = s.adSenseId;
+    window._adSlotInFeed   = s.adSlotInFeed   || '';
+    window._adSlotHeader   = s.adSlotHeader   || '';
+    window._adSlotFooter   = s.adSlotFooter   || '';
+    window._adSlotPopup    = s.adSlotPopup    || '';
+    injectAdSense();
+  }
+
   } catch(e){ /* silent - offline or no settings doc yet */ }
+}
+
+// ═══════════════════════════════════════════════════════
+// ADSENSE SYSTEM — ID বসালেই চালু হয়
+// ═══════════════════════════════════════════════════════
+function injectAdSense() {
+  var pubId = window._adSenseId;
+  if (!pubId || !pubId.startsWith('ca-pub-')) return;
+
+  // 1. AdSense script tag (once)
+  if (!document.getElementById('adsense-script')) {
+    var s = document.createElement('script');
+    s.id = 'adsense-script';
+    s.async = true;
+    s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + pubId;
+    s.crossOrigin = 'anonymous';
+    document.head.appendChild(s);
+  }
+
+  // 2. Header ad (below nav)
+  if (window._adSlotHeader) {
+    var headerAd = document.getElementById('ad-header-slot');
+    if (!headerAd) {
+      headerAd = document.createElement('div');
+      headerAd.id = 'ad-header-slot';
+      headerAd.style.cssText = 'width:100%;text-align:center;padding:8px 0;background:transparent;';
+      headerAd.innerHTML = '<ins class="adsbygoogle" style="display:block;width:100%;height:90px" data-ad-client="'+pubId+'" data-ad-slot="'+window._adSlotHeader+'" data-ad-format="horizontal" data-full-width-responsive="true"></ins>';
+      var nav = document.querySelector('nav,.navbar,.top-nav');
+      if (nav && nav.nextSibling) nav.parentNode.insertBefore(headerAd, nav.nextSibling);
+      else document.body.prepend(headerAd);
+    }
+    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch(_) {}
+  }
+
+  // 3. Footer ad (above footer)
+  if (window._adSlotFooter) {
+    var footerAd = document.getElementById('ad-footer-slot');
+    if (!footerAd) {
+      footerAd = document.createElement('div');
+      footerAd.id = 'ad-footer-slot';
+      footerAd.style.cssText = 'width:100%;text-align:center;padding:12px 0;background:transparent;';
+      footerAd.innerHTML = '<ins class="adsbygoogle" style="display:block;width:100%;height:90px" data-ad-client="'+pubId+'" data-ad-slot="'+window._adSlotFooter+'" data-ad-format="horizontal" data-full-width-responsive="true"></ins>';
+      var footer = document.querySelector('footer,.footer,#footer');
+      if (footer) footer.parentNode.insertBefore(footerAd, footer);
+      else document.body.appendChild(footerAd);
+    }
+    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch(_) {}
+  }
+
+  // 4. In-feed ad — tools grid এর প্রতি 4টি tool এর পরে
+  window._adSenseInFeedActive = !!window._adSlotInFeed;
+}
+
+// In-feed ad HTML generator (applyFilters এ use হবে)
+function getInFeedAdHTML() {
+  var pubId = window._adSenseId;
+  var slot  = window._adSlotInFeed;
+  if (!pubId || !slot || !window._adSenseInFeedActive) return null;
+  var wrap = document.createElement('div');
+  wrap.className = 'tool-card';
+  wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;min-height:180px;background:rgba(66,133,244,.04);border:1px dashed rgba(66,133,244,.2);border-radius:12px;';
+  wrap.innerHTML = '<ins class="adsbygoogle" style="display:block;width:100%;min-height:150px" data-ad-client="'+pubId+'" data-ad-slot="'+slot+'" data-ad-format="fluid" data-ad-layout-key="-6t+ed+2i-1n-4w" data-full-width-responsive="true"></ins>';
+  setTimeout(function(){ try{ (window.adsbygoogle=window.adsbygoogle||[]).push({}); }catch(_){} }, 100);
+  return wrap;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -4424,7 +4516,19 @@ window.applyFilters=()=>{
     if(emptyEl){emptyEl.style.display='block';emptyEl.innerHTML='<div class="empty-state"><i class="fas fa-search empty-state-icon"></i><div class="empty-state-text">কোনো টুল পাওয়া যায়নি</div><div class="empty-state-sub">ভিন্ন কীওয়ার্ড বা ক্যাটাগরি চেষ্টা করুন</div><button class="btn btn-outline btn-sm" style="margin-top:16px" onclick="filterTools(\'\')">সব টুলস দেখুন</button></div>';}
   } else {
     if(emptyEl)emptyEl.style.display='none';
-    if(grid){grid.innerHTML='';tools.forEach((t,i)=>{const c=renderCard(t);c.style.animationDelay=(i*.04)+'s';grid.appendChild(c);});}
+    if(grid){
+      grid.innerHTML='';
+      tools.forEach((t,i)=>{
+        const c=renderCard(t);
+        c.style.animationDelay=(i*.04)+'s';
+        grid.appendChild(c);
+        // ✅ In-feed ad: প্রতি ৪টি tool এর পরে
+        if((i+1)%4===0 && i<tools.length-1){
+          var adEl=getInFeedAdHTML();
+          if(adEl) grid.appendChild(adEl);
+        }
+      });
+    }
   }
 };
 let searchTimer;
