@@ -4168,6 +4168,16 @@ async function fetchToolsFromAPI(){
     if(_allLocal.length){_toolsCache=_allLocal;_toolsCacheTs=Date.now();return _allLocal;}
     return null;
   }
+  // ✅ FIX: _fbDb না থাকলে সর্বোচ্চ 2s পর্যন্ত wait করো (race condition guard)
+  if(typeof firebase !== 'undefined' && !window._fbDb) {
+    await new Promise(function(resolve) {
+      var _w = 0;
+      var _iv = setInterval(function() {
+        if(window._fbDb || _w >= 2000) { clearInterval(_iv); resolve(); }
+        _w += 100;
+      }, 100);
+    });
+  }
   // Try Firebase Firestore first
   if(typeof firebase !== 'undefined' && window._fbDb){
     // ✅ QUOTA CHECK: quota exhausted হলে Firestore skip করো
@@ -5131,8 +5141,8 @@ function startLoading() {
     var ls = document.getElementById('loadingScreen');
     if (ls) { ls.classList.add('hidden'); ls.style.display = 'none'; }
   }, 2500);
-  // Show home page
-  setTimeout(function() {
+  // Show home page — Firebase ready হওয়ার পর load করো (race condition fix)
+  function _doShowHome() {
     try {
       showPage('home');
       if (typeof SEOManager !== 'undefined') SEOManager.updateMeta('tools');
@@ -5146,7 +5156,20 @@ function startLoading() {
       if (ls2) { ls2.classList.add('hidden'); ls2.style.display = 'none'; }
     }
     try { if (typeof updateUserUI === 'function' && App && App.user) updateUserUI(); } catch(e) {}
-  }, 300);
+  }
+  // ✅ RACE CONDITION FIX: Firebase init শেষ হওয়ার পর home load করো
+  // _fbDb set হতে সাধারণত ~200-800ms লাগে; poll করে wait করি
+  (function waitForFirebase(attempts) {
+    if (window._fbDb && window.__firebaseSDKReady) {
+      _doShowHome();
+    } else if (attempts > 0) {
+      setTimeout(function() { waitForFirebase(attempts - 1); }, 150);
+    } else {
+      // Timeout fallback — Firebase ছাড়াই চালাও (localStorage/default দিয়ে)
+      console.warn('[startLoading] Firebase timeout — showing home without Firestore');
+      _doShowHome();
+    }
+  })(20); // max 20 × 150ms = 3s wait
   // Background sync
   setTimeout(function() {
     try { if (typeof syncFromAdmin === 'function') syncFromAdmin(); } catch(e) {}
