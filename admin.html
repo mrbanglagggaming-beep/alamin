@@ -8274,18 +8274,43 @@ async function saveTool(preview = false) {
             return;
         }
         
+        // ✅ REST API দিয়ে save — WebChannel 404 bypass
+        const _PROJECT = 'autoscripcom';
+        let _authToken = null;
+        try { if(fbAuth.currentUser) _authToken = await fbAuth.currentUser.getIdToken(); } catch(_){}
+        const _headers = {'Content-Type':'application/json'};
+        if(_authToken) _headers['Authorization'] = 'Bearer ' + _authToken;
+
+        function _toFV(val) {
+            if(val===null||val===undefined) return {nullValue:null};
+            if(typeof val==='boolean') return {booleanValue:val};
+            if(typeof val==='number') return {integerValue:String(Math.round(val))};
+            if(typeof val==='string') return {stringValue:val};
+            if(Array.isArray(val)) return {arrayValue:{values:val.map(_toFV)}};
+            if(typeof val==='object') { const f={}; for(const k in val) f[k]=_toFV(val[k]); return {mapValue:{fields:f}}; }
+            return {stringValue:String(val)};
+        }
+
         if (editId) {
-            await fbDb.collection('autoscrip_tools').doc(editId).update(toolData);
+            // PATCH — শুধু changed fields update করো
+            const _fields = {}; for(const k in toolData) _fields[k] = _toFV(toolData[k]);
+            const _fieldPaths = Object.keys(toolData).join(',');
+            const _patchUrl = `https://firestore.googleapis.com/v1/projects/${_PROJECT}/databases/(default)/documents/autoscrip_tools/${editId}?updateMask.fieldPaths=${Object.keys(toolData).join('&updateMask.fieldPaths=')}`;
+            const _pRes = await fetch(_patchUrl, {method:'PATCH', headers:_headers, body:JSON.stringify({fields:_fields})});
+            if(!_pRes.ok) { const _e=await _pRes.text(); throw new Error('Update failed: '+_e.substring(0,100)); }
             const idx = allTools.findIndex(t => (t.id || t._id) === editId);
             if (idx >= 0) allTools[idx] = { ...allTools[idx], ...toolData, id: editId, _id: editId };
             toast(`✅ "${title}" আপডেট হয়েছে!`, 'success');
         } else {
-            toolData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-            toolData.views = 0;
-            toolData.downloads = 0;
-            toolData.likes = 0;
-            const docRef = await fbDb.collection('autoscrip_tools').add(toolData);
-            const newTool = { ...toolData, id: docRef.id, _id: docRef.id };
+            toolData.createdAt = new Date().toISOString();
+            toolData.views = 0; toolData.downloads = 0; toolData.likes = 0;
+            const _fields = {}; for(const k in toolData) _fields[k] = _toFV(toolData[k]);
+            const _addUrl = `https://firestore.googleapis.com/v1/projects/${_PROJECT}/databases/(default)/documents/autoscrip_tools`;
+            const _aRes = await fetch(_addUrl, {method:'POST', headers:_headers, body:JSON.stringify({fields:_fields})});
+            if(!_aRes.ok) { const _e=await _aRes.text(); throw new Error('Add failed: '+_e.substring(0,100)); }
+            const _aData = await _aRes.json();
+            const newId = _aData.name.split('/').pop();
+            const newTool = { ...toolData, id: newId, _id: newId };
             allTools.unshift(newTool);
             toast(`✅ "${title}" যোগ হয়েছে!`, 'success');
         }
