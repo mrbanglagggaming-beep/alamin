@@ -4185,8 +4185,8 @@ window.doLogin = function() {
 <!-- Firestore connection warning banner -->
 <div id="fsWarnBanner" style="display:none;background:linear-gradient(90deg,rgba(255,61,87,.9),rgba(255,100,50,.9));color:#1fd6b0;text-align:center;padding:10px 20px;font-family:var(--font-head);font-size:.88rem;font-weight:700;position:fixed;top:0;left:0;right:0;z-index:99998;display:flex;align-items:center;justify-content:center;gap:12px">
   <i class="fas fa-exclamation-triangle"></i>
-  <span>⚠️ autoscrip_tools collection খালি — Firebase Console থেকে টুল যোগ করুন অথবা Rules চেক করুন</span>
-  <a href="https://console.firebase.google.com/project/autoscripcom/firestore" target="_blank"
+  <span id="emptyToolsMsg">⚠️ autoscrip_tools collection খালি — Firebase Console থেকে টুল যোগ করুন অথবা Rules চেক করুন</span>
+  <a href="https://console.firebase.google.com/project/autoscripcom-v2/firestore" target="_blank"
      style="background:rgba(31,214,176,.25);padding:4px 14px;border-radius:99px;color:#1fd6b0;text-decoration:none;font-size:.82rem;white-space:nowrap">
     Firebase Console খুলুন →
   </a>
@@ -7821,11 +7821,12 @@ window.migrateLocalTools = migrateLocalTools;
 
 
 function showFirestoreSetupGuide() {
-    // ✅ FIX: 3 seconds পরে দেখাও — Firebase init এর সময় দাও
+    // ✅ FIX: tools load হয়ে গেলে setup guide দেখাবে না
+    if (window._toolsLoadedOK) return;
     if (window._firebaseInitOK) {
-        _showGuideNow();
+        setTimeout(function() { if (!window._toolsLoadedOK) _showGuideNow(); }, 2000);
     } else {
-        setTimeout(function() { if (!window._firebaseInitOK) _showGuideNow(); }, 3000);
+        setTimeout(function() { if (!window._firebaseInitOK && !window._toolsLoadedOK) _showGuideNow(); }, 3000);
     }
 }
 function _showGuideNow() {
@@ -7842,7 +7843,7 @@ function _showGuideNow() {
         নিচের ধাপগুলো অনুসরণ করুন:
       </div>
       <div style="display:flex;flex-direction:column;gap:12px">
-        <a href="https://console.firebase.google.com/project/autoscripcom/firestore" target="_blank"
+        <a href="https://console.firebase.google.com/project/autoscripcom-v2/firestore" target="_blank"
            style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:rgba(31,214,176,.08);border:1px solid rgba(31,214,176,.25);border-radius:12px;color:#1fd6b0;text-decoration:none;font-weight:700;font-size:.9rem">
           <span style="font-size:1.4rem">1️⃣</span>
           <div>
@@ -7936,6 +7937,7 @@ async function loadTools(forceRefresh = false) {
         _allDocs.forEach(doc => { const id=doc.name.split('/').pop(); const fields=doc.fields||{}; var obj={id,_id:id}; Object.keys(fields).forEach(k=>{obj[k]=_fv2(fields[k]);}); toolsArray.push(obj); });
         _restLoaded = true;
         console.log('[loadTools] ✅ REST API loaded:', toolsArray.length, 'tools');
+        window._toolsLoadedOK = true;
       }
     } catch(_re) { console.warn('[loadTools] REST failed, trying SDK:', _re.message); }
 
@@ -7949,6 +7951,7 @@ async function loadTools(forceRefresh = false) {
     if (toolsArray.length > 0) {
       allTools = toolsArray.sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
       console.log('[loadTools] Loaded', allTools.length, 'tools from Firestore');
+      window._toolsLoadedOK = true;
       window._toolsCacheTs = Date.now();
     } else {
       // localStorage fallback
