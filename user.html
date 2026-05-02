@@ -5142,6 +5142,7 @@ const TabSync = {
       window.__firebaseSDKReady = true;
       window._firebaseInitOK    = true;
       console.log('[Firebase] ✅ Init SUCCESS — autoscripcom');
+      firebase.auth().signInAnonymously().catch(function(){});
       if (typeof waitAndRegisterAuthListener === 'function') {
         waitAndRegisterAuthListener();
       }
