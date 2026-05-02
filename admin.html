@@ -3971,8 +3971,23 @@ footer, .footer { background: #030810 !important; border-top: 1px solid rgba(31,
     if (_toolsCache.length && now - _cacheTs < 60000) return _toolsCache;
     try {
       if (typeof fbDb !== 'undefined' && fbDb?.collection) {
-        const snap = await fbDb.collection('autoscrip_tools').get();
-        _toolsCache = snap.docs.map(d => ({id:d.id, ...d.data()}));
+        // ✅ REST API fallback — WebChannel 404 bypass
+        let _loaded = false;
+        try {
+          const _r = await fetch('https://firestore.googleapis.com/v1/projects/autoscripcom/databases/(default)/documents/autoscrip_tools?pageSize=500');
+          if (_r.ok) {
+            const _d = await _r.json();
+            if (_d.documents && _d.documents.length > 0) {
+              function _fv(f){if(!f)return undefined;if(f.stringValue!==undefined)return f.stringValue;if(f.integerValue!==undefined)return parseInt(f.integerValue);if(f.doubleValue!==undefined)return f.doubleValue;if(f.booleanValue!==undefined)return f.booleanValue;if(f.timestampValue!==undefined)return f.timestampValue;if(f.nullValue!==undefined)return null;if(f.arrayValue)return(f.arrayValue.values||[]).map(_fv);if(f.mapValue){var o={};Object.keys(f.mapValue.fields||{}).forEach(k=>{o[k]=_fv(f.mapValue.fields[k]);});return o;}return undefined;}
+              _toolsCache = _d.documents.map(doc => { const id=doc.name.split('/').pop(); const fields=doc.fields||{}; var obj={id,_id:id}; Object.keys(fields).forEach(k=>{obj[k]=_fv(fields[k]);}); return obj; });
+              _loaded = true;
+            }
+          }
+        } catch(_re) {}
+        if (!_loaded) {
+          const snap = await fbDb.collection('autoscrip_tools').get();
+          _toolsCache = snap.docs.map(d => ({id:d.id, ...d.data()}));
+        }
       } else if (typeof allTools !== 'undefined') {
         _toolsCache = allTools;
       }
@@ -7903,13 +7918,33 @@ async function loadTools(forceRefresh = false) {
   }
 
   try {
-    // ✅ FIX: collection.get() এর পরিবর্তে query ব্যবহার করুন
+    // ✅ REST API fallback — WebChannel 404 bypass
     const toolsArray = [];
-    const snap = await fbDb.collection('autoscrip_tools').get();
+    let _restLoaded = false;
+    try {
+      let _allDocs = [];
+      let _nextPage = 'https://firestore.googleapis.com/v1/projects/autoscripcom/databases/(default)/documents/autoscrip_tools?pageSize=500';
+      while (_nextPage) {
+        const _r = await fetch(_nextPage);
+        if (!_r.ok) break;
+        const _d = await _r.json();
+        if (_d.documents) _allDocs = _allDocs.concat(_d.documents);
+        _nextPage = _d.nextPageToken ? _nextPage.split('?')[0] + '?pageSize=500&pageToken=' + _d.nextPageToken : null;
+      }
+      if (_allDocs.length > 0) {
+        function _fv2(f){if(!f)return undefined;if(f.stringValue!==undefined)return f.stringValue;if(f.integerValue!==undefined)return parseInt(f.integerValue);if(f.doubleValue!==undefined)return f.doubleValue;if(f.booleanValue!==undefined)return f.booleanValue;if(f.timestampValue!==undefined)return f.timestampValue;if(f.nullValue!==undefined)return null;if(f.arrayValue)return(f.arrayValue.values||[]).map(_fv2);if(f.mapValue){var o={};Object.keys(f.mapValue.fields||{}).forEach(k=>{o[k]=_fv2(f.mapValue.fields[k]);});return o;}return undefined;}
+        _allDocs.forEach(doc => { const id=doc.name.split('/').pop(); const fields=doc.fields||{}; var obj={id,_id:id}; Object.keys(fields).forEach(k=>{obj[k]=_fv2(fields[k]);}); toolsArray.push(obj); });
+        _restLoaded = true;
+        console.log('[loadTools] ✅ REST API loaded:', toolsArray.length, 'tools');
+      }
+    } catch(_re) { console.warn('[loadTools] REST failed, trying SDK:', _re.message); }
 
-    snap.forEach(doc => {
-      toolsArray.push({ id: doc.id, _id: doc.id, ...doc.data() });
-    });
+    if (!_restLoaded) {
+      const snap = await fbDb.collection('autoscrip_tools').get();
+      snap.forEach(doc => {
+        toolsArray.push({ id: doc.id, _id: doc.id, ...doc.data() });
+      });
+    }
 
     if (toolsArray.length > 0) {
       allTools = toolsArray.sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
