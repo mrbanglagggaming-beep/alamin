@@ -4185,8 +4185,51 @@ async function fetchToolsFromAPI(){
       console.warn('[Firestore] Quota throttle active — skipping Firestore read');
       return _toolsCache || null;
     }
-    // Step 1: Simple .get() — no where/orderBy to avoid composite index requirement
+    // Step 1: Firestore REST API দিয়ে read (WebChannel 404 bypass)
     try{
+      // ✅ REST API — WebChannel offline থাকলেও কাজ করে
+      const _proj = 'autoscripcom';
+      const _restUrl = 'https://firestore.googleapis.com/v1/projects/' + _proj + '/databases/(default)/documents/autoscrip_tools?pageSize=300';
+      let _restTools = null;
+      try {
+        const _restRes = await fetch(_restUrl);
+        if (_restRes.ok) {
+          const _restData = await _restRes.json();
+          if (_restData.documents && _restData.documents.length > 0) {
+            _restTools = _restData.documents.map(function(doc) {
+              const id = doc.name.split('/').pop();
+              const fields = doc.fields || {};
+              function _fv(f) {
+                if (!f) return undefined;
+                if (f.stringValue !== undefined) return f.stringValue;
+                if (f.integerValue !== undefined) return parseInt(f.integerValue);
+                if (f.doubleValue !== undefined) return f.doubleValue;
+                if (f.booleanValue !== undefined) return f.booleanValue;
+                if (f.timestampValue !== undefined) return f.timestampValue;
+                if (f.nullValue !== undefined) return null;
+                if (f.arrayValue) return (f.arrayValue.values||[]).map(_fv);
+                if (f.mapValue) { var o={}; Object.keys(f.mapValue.fields||{}).forEach(function(k){o[k]=_fv(f.mapValue.fields[k]);}); return o; }
+                return undefined;
+              }
+              var obj = {id: id, _id: id};
+              Object.keys(fields).forEach(function(k){ obj[k] = _fv(fields[k]); });
+              return obj;
+            });
+          }
+        }
+      } catch(_re) { console.warn('[fetchTools] REST failed:', _re.message); _restTools = null; }
+
+      if (_restTools && _restTools.length > 0) {
+        const tools = _restTools
+          .filter(t => t.status === 'approved' || t.published !== false)
+          .sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+        _toolsCache = tools; _toolsCacheTs = Date.now();
+        try { localStorage.setItem('autoscrip_tools', JSON.stringify(tools)); } catch(_){}
+        console.log('[fetchTools] ✅ REST API success:', tools.length, 'tools');
+        return tools;
+      }
+
+      // REST ব্যর্থ হলে SDK .get() fallback
       const snap = await window._fbDb.collection('autoscrip_tools').get();
       console.log('[fetchTools] Firestore snap size:', snap.size, 'empty:', snap.empty);
       if(!snap.empty){
