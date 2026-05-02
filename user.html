@@ -4188,7 +4188,7 @@ async function fetchToolsFromAPI(){
     // Step 1: Firestore REST API দিয়ে read (WebChannel 404 bypass)
     try{
       // ✅ REST API — WebChannel offline থাকলেও কাজ করে
-      const _proj = 'autoscripcom';
+      const _proj = 'autoscripcom-v2';
       const _restUrl = 'https://firestore.googleapis.com/v1/projects/' + _proj + '/databases/(default)/documents/autoscrip_tools?pageSize=300';
       let _restTools = null;
       try {
@@ -5108,12 +5108,12 @@ const TabSync = {
 // ===== FIREBASE INIT (User Panel) =====
 (function initFirebaseUser(){
   const FB_CONFIG = {
-    apiKey:            "AIzaSyBrh6Lm11Kz0-Hu3CT-TlifkrXiGnLY0Z4",
-    authDomain:        "autoscripcom.firebaseapp.com",
-    projectId:         "autoscripcom",
-    storageBucket:     "autoscripcom.firebasestorage.app",
-    messagingSenderId: "709315727810",
-    appId:             "1:709315727810:web:abeb73172635061343c65b"
+    apiKey: "AIzaSyCQ2KGmxi-0hk2QcC3FgjLvk27eMbRpmGg",
+    authDomain: "autoscripcom-v2.firebaseapp.com",
+    projectId: "autoscripcom-v2",
+    storageBucket: "autoscripcom-v2.firebasestorage.app",
+    messagingSenderId: "1010673229210",
+    appId: "1:1010673229210:web:a72b0f4ea5e97d69666e23"
   };
 
   function checkAndInit() {
