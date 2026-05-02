@@ -3974,7 +3974,7 @@ footer, .footer { background: #030810 !important; border-top: 1px solid rgba(31,
         // ✅ REST API fallback — WebChannel 404 bypass
         let _loaded = false;
         try {
-          const _r = await fetch('https://firestore.googleapis.com/v1/projects/autoscripcom/databases/(default)/documents/autoscrip_tools?pageSize=500');
+          const _r = await fetch('https://firestore.googleapis.com/v1/projects/autoscripcom-v2/databases/(default)/documents/autoscrip_tools?pageSize=500');
           if (_r.ok) {
             const _d = await _r.json();
             if (_d.documents && _d.documents.length > 0) {
@@ -5872,13 +5872,13 @@ const IS_LOCAL_ADMIN = location.protocol === 'file:';
 })();
 // ===== FIREBASE CONFIGURATION & INITIALIZATION =====
 const FIREBASE_CONFIG = {
-    apiKey: "AIzaSyBrh6Lm11Kz0-Hu3CT-TlifkrXiGnLY0Z4",
-    authDomain: "autoscripcom.firebaseapp.com",
-    projectId: "autoscripcom",
-    storageBucket: "autoscripcom.firebasestorage.app",
-    messagingSenderId: "33311043373",
-    appId: "1:33311043373:web:46f308c71fc97b99e4ada4",
-    measurementId: "G-QZR6MYKLPS"
+    apiKey: "AIzaSyCQ2KGmxi-0hk2QcC3FgjLvk27eMbRpmGg",
+    authDomain: "autoscripcom-v2.firebaseapp.com",
+    projectId: "autoscripcom-v2",
+    storageBucket: "autoscripcom-v2.firebasestorage.app",
+    messagingSenderId: "1010673229210",
+    appId: "1:1010673229210:web:a72b0f4ea5e97d69666e23",
+    measurementId: "G-Q2REG1PE6L"
 };
 
 const ADMIN_UID_MASTER   = "LE4ZemsgrGNN3PmfFr3qgPYEenk1";
@@ -7700,7 +7700,7 @@ async function migrateLocalTools() {
 
     // ── Firestore REST API ব্যবহার করি — WebChannel timeout এড়াতে ──
     // Batch size: ৫টি করে, প্রতিটির মাঝে ৩০০ms বিরতি
-    const PROJECT = 'autoscripcom';
+    const PROJECT = 'autoscripcom-v2';
     const DB = '(default)';
     const COLLECTION = 'autoscrip_tools';
     
@@ -7923,7 +7923,7 @@ async function loadTools(forceRefresh = false) {
     let _restLoaded = false;
     try {
       let _allDocs = [];
-      let _nextPage = 'https://firestore.googleapis.com/v1/projects/autoscripcom/databases/(default)/documents/autoscrip_tools?pageSize=500';
+      let _nextPage = 'https://firestore.googleapis.com/v1/projects/autoscripcom-v2/databases/(default)/documents/autoscrip_tools?pageSize=500';
       while (_nextPage) {
         const _r = await fetch(_nextPage);
         if (!_r.ok) break;
@@ -8275,7 +8275,7 @@ async function saveTool(preview = false) {
         }
         
         // ✅ REST API দিয়ে save — WebChannel 404 bypass
-        const _PROJECT = 'autoscripcom';
+        const _PROJECT = 'autoscripcom-v2';
         let _authToken = null;
         try { if(fbAuth.currentUser) _authToken = await fbAuth.currentUser.getIdToken(); } catch(_){}
         const _headers = {'Content-Type':'application/json'};
