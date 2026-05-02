@@ -5994,7 +5994,8 @@ if(!document.getElementById('rippleStyle')){
     window._fbAuth.onAuthStateChanged(function(fbUser){
       if(fbUser && !App.user){
         var uid = fbUser.uid;
-        var udata = {id:uid, uid:uid, email:fbUser.email, name:fbUser.displayName||fbUser.email.split('@')[0], role:'user'};
+        if(fbUser.isAnonymous) return; // anonymous user — skip
+        var udata = {id:uid, uid:uid, email:fbUser.email||'', name:fbUser.displayName||(fbUser.email?fbUser.email.split('@')[0]:'Guest'), role:'user'};
         if(window._fbDb){
           window._fbDb.collection('autoscrip_users').doc(uid).get().then(function(doc){
             if(doc.exists){ udata = Object.assign({}, udata, doc.data()); }
